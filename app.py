@@ -179,25 +179,24 @@ def process_group_post_comments(
         title = (doc.get("post_title") or "")[:60]
         comment_id = str(doc["_id"])
 
-        print(f"  [{i}/{len(comments)}] r/{doc.get('subreddit_name')} — {title}...")
-
         if not post_url:
+            print(f"  [{i}/{len(comments)}] skipped — missing post_url")
             repo.mark_comment_failed(comment_id, "missing post_url")
             failed += 1
-            print("    ✗ missing post_url")
             continue
 
         if not text:
+            print(f"  [{i}/{len(comments)}] skipped — empty comment")
             repo.mark_comment_failed(comment_id, "empty generated_comment")
             failed += 1
-            print("    ✗ empty comment text")
             continue
 
         if dry_run:
+            print(f"  [{i}/{len(comments)}] r/{doc.get('subreddit_name')} — {title}...")
             print(f"    (dry-run) would post {len(text)} chars to {post_url}")
             continue
 
-        pending.append((i, comment_id, post_url, text))
+        pending.append((i, comment_id, post_url, text, doc.get("subreddit_name"), title))
 
     if dry_run or not pending:
         print(f"  Phase 4 complete: {posted} posted, {failed} failed")
@@ -219,7 +218,8 @@ def process_group_post_comments(
             print(f"    ✗ {result['error']}")
 
     with BrowserPoster() as browser:
-        for i, comment_id, post_url, text in pending:
+        for i, comment_id, post_url, text, subreddit, title in pending:
+            print(f"  [{i}/{len(comments)}] r/{subreddit} — {title}...")
             result = post_comment_safe(post_url, text, browser=browser)
             handle_result(comment_id, result)
             if i < len(comments):

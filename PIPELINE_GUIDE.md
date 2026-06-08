@@ -207,7 +207,7 @@ Thin wrapper for posting comments — calls the browser poster and normalizes su
 ---
 
 ### `reddit_browser_poster.py`
-Playwright-based Reddit automation: login, saved session, and posting comments on `old.reddit.com`. Used by `reddit_poster.py`; session stored in `.reddit_browser_session/`.
+Playwright-based Reddit automation: login, saved session, and posting comments on `www.reddit.com`. Used by `reddit_poster.py`; session stored in `.reddit_browser_session/`.
 
 ---
 
