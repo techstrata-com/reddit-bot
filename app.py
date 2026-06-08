@@ -241,6 +241,8 @@ def process_group(
     client: ApifyClient,
     base_config: dict,
     skip_comments: bool,
+    post_comments: bool = False,
+    dry_run_post: bool = False,
 ) -> None:
     group_run_id = repo.create_group_run(
         pipeline_run_id,
@@ -314,6 +316,16 @@ def process_group(
         )
         repo.finish_group_run(group_run_id, raw_count=total_saved, selected_count=selected_count)
 
+        if post_comments:
+            print(f"\n  --- Phase 4: post comments ---")
+            process_group_post_comments(
+                repo,
+                pipeline_run_id,
+                run_key,
+                group,
+                dry_run=dry_run_post,
+            )
+
     except Exception as err:
         repo.fail_group_run(group_run_id, str(err))
         raise
@@ -336,7 +348,7 @@ def main() -> None:
     parser.add_argument("top_n", type=int, nargs="?", default=3, help="Top posts per group (default: 3)")
     parser.add_argument("--skip-comments", action="store_true", help="Stop after scrape + select")
     parser.add_argument("--comments-only", action="store_true", help="Generate comments from existing selected_posts")
-    parser.add_argument("--post-comments", action="store_true", help="Publish generated comments to Reddit")
+    parser.add_argument("--post-comments", action="store_true", help="Also post comments to Reddit (Phase 4)")
     parser.add_argument("--reddit-login", action="store_true", help="Open browser to log into Reddit (saves session)")
     parser.add_argument("--dry-run", action="store_true", help="With --post-comments: show what would be posted without posting")
     parser.add_argument("--resume", metavar="RUN_KEY", help="Resume an existing run (e.g. 20260608_122706)")
@@ -386,10 +398,7 @@ def main() -> None:
             config_snapshot=base_config,
         )
 
-    if args.post_comments:
-        if not args.resume:
-            raise ValueError("--post-comments requires --resume RUN_KEY")
-
+    if args.post_comments and args.resume and not args.comments_only:
         if not groups:
             group_ids_in_db = repo.comments.distinct("group_id", {"run_key": run_key})
             groups = [all_groups_map[gid] for gid in group_ids_in_db if gid in all_groups_map]
@@ -399,7 +408,7 @@ def main() -> None:
             raise ValueError("No groups to process")
 
         mode = "dry-run" if args.dry_run else "live"
-        print(f"Post comments ({mode}) — groups: {[g.id for g in groups]}")
+        print(f"Post comments only ({mode}) — groups: {[g.id for g in groups]}")
 
         try:
             for group in groups:
@@ -417,6 +426,9 @@ def main() -> None:
         finally:
             close_connection()
         return
+
+    if args.post_comments and args.skip_comments:
+        raise ValueError("--post-comments cannot be used with --skip-comments")
 
     if args.comments_only:
         if not groups:
@@ -449,7 +461,13 @@ def main() -> None:
     with CONFIG_PATH.open(encoding="utf-8") as f:
         base_config = json.load(f)
 
+    phases = "scrape → select"
+    if not args.skip_comments:
+        phases += " → generate"
+        if args.post_comments:
+            phases += " → post"
     print(f"Day {args.day} ({day_name}) — groups {[g.id for g in groups]} — top {args.top_n}/group")
+    print(f"Pipeline: {phases}")
     print(f"Run: {run_key}")
 
     try:
@@ -468,6 +486,8 @@ def main() -> None:
                 client=client,
                 base_config=base_config,
                 skip_comments=args.skip_comments,
+                post_comments=args.post_comments,
+                dry_run_post=args.dry_run,
             )
 
         repo.finish_run(pipeline_run_id)
