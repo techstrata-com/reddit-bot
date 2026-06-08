@@ -1,0 +1,36 @@
+{
+    "debugMode": false,
+    "ignoreStartUrls": false,
+    "includeMediaLinks": true,
+    "includeNSFW": false,
+    "maxComments": 15,
+    "maxCommunitiesCount": 15,
+    "maxItems": 300,
+    "maxPostCount": 20,
+    "maxUserCount": 2,
+    "proxy": {
+        "useApifyProxy": true,
+        "apifyProxyGroups": [
+            "RESIDENTIAL"
+        ]
+    },
+    "scrollTimeout": 500,
+    "searchComments": false,
+    "searchCommunities": false,
+    "searchMedia": false,
+    "searchPosts": true,
+    "searchUsers": false,
+    "skipComments": true,
+    "skipCommunity": true,
+    "skipUserPosts": false,
+    "sort": "top",
+    "startUrls": [
+        {
+            "url": "https://www.reddit.com/r/AIDiscussion"
+        },
+        {
+            "url": "https://www.reddit.com/r/KindroidAI"
+        }
+    ],
+    "time": "week"
+}

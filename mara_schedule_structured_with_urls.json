@@ -1,0 +1,1315 @@
+{
+  "title": "Mara — 8 Subreddit Groups for Scheduling",
+  "source_file": "MARA's schedule.txt",
+  "categories": [
+    {
+      "name": "AI-Based Groups",
+      "groups": [
+        {
+          "id": "A",
+          "title": "Big AI Communities",
+          "subreddits": [
+            {
+              "name": "r/ChatGPT",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Malicious Communication",
+                  "description": "Posters and commenters are expected to act in good faith. Treat other users the way you want to be treated. Avoid straw-manning and bad-faith interpretations. Report posts/comments that aren't appropriate for the \"serious\" flair."
+                },
+                {
+                  "number": 2,
+                  "title": "Political Discussion",
+                  "description": "Having ChatGPT create political content is completely fine. Discussion of the politics around AI and LLMs is allowed. Broader political arguments that are not meaningfully connected to AI may be removed."
+                },
+                {
+                  "number": 3,
+                  "title": "No NSFW Content",
+                  "description": ""
+                },
+                {
+                  "number": 4,
+                  "title": "AI Art",
+                  "description": "Quality over Quantity: AI art submissions are allowed only if they showcase something very unique or unusual. Generic memes, low-effort images and karma farming posts will be removed. Encourage Tech Discussion: Posts that include insights, techniques, or thought-provoking commentary about the AI process or technology behind the art are highly encouraged. Mod Discretion: Mods reserve the right to remove posts that do not meet the above criteria."
+                }
+              ],
+              "url": "https://www.reddit.com/r/ChatGPT"
+            },
+            {
+              "name": "r/artificial",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Be civil and follow Reddiquette Whether you’re just starting out or have years of experience, we want this to be a welcoming and inclusive community.",
+                  "description": "No hate speech/rhetoric, discrimination, bigotry, or prejudices. Be respectful. Don't start or end conversations being rude to users. No harassing. No provoking, ‘gotchas’, or other bad faith behaviors or discourse. If it looks like you’re rabble-rousing, baiting, or trolling, especially if you have no other or limited history here we will use our discretion."
+                },
+                {
+                  "number": 2,
+                  "title": "Self-advertisement",
+                  "description": "Your first post or comment cannot have promo, that would be 100% self-promo, do not try to get around the rule, it's 10%. This sub is prone to scams, spam, and excessive promo. We want participation here first for you to advertise. No self-inserting your product here. We will use mod discretion."
+                },
+                {
+                  "number": 3,
+                  "title": "No spam or off-topic posts",
+                  "description": "Please talk about AI or AI related topics like robotics, machine learning algorithms, computer hardware, etc. Do not use clickbait, generic, sensationalized, one word, misleading, or link addresses in titles, etc. Describe what your post is about. Use concise, accurate titles."
+                },
+                {
+                  "number": 4,
+                  "title": "No selling",
+                  "description": "No selling your own products or anything in general. It's sketchy and hard to enforce. This also includes crypto, job offers, and other unverifiable content of the like."
+                },
+                {
+                  "number": 5,
+                  "title": "NSFW content",
+                  "description": "Discussion or news about how it relates to AI is fine, just no erotic content, graphic violence, etc."
+                },
+                {
+                  "number": 6,
+                  "title": "Not an AI art gallery",
+                  "description": "This is a space for sharing/discussion of AI research, news, tutorials, and politics/philosophy. It is not a venue for sharing AI art/video, whether that is low quality \"slop\" (which also violates rule #5) or high quality, creative AI art. This rule is not a rejection of AI art in general. But there are better subs for you to share your art (e.g. r/aiArt or r/aiVideo). However, sharing news/research from the field of AI media synthesis, or useful educational content about it is always welcome."
+                },
+                {
+                  "number": 7,
+                  "title": "Not your anti-AI soapbox",
+                  "description": "This is a forum for sharing news, research and other information about developments in AI/ML. It is not a place to rant about how much you hate AI, attack people for using AI, post low quality \"AI bad\" opinion pieces, or spread anti-AI misinformation. High-quality, factually substantiated articles that analyze specific harmful uses of AI (mass surveillance, propaganda, etc) are still welcome. But this sub is not the place for generalized AI hate. Perhaps r/antiAI would be a better fit ..."
+                },
+                {
+                  "number": 8,
+                  "title": "No false/misleading content",
+                  "description": "There is a lot of disinformation out there about AI. Some of this is overblown AI industry hype. Some of it is anti-AI entertainment propaganda. Some of it is just sloppy reasoning by Internet pundits and Tiktok influencers. None of it is welcome here. Misleading content (including headlines) will be removed. This sub will not be a platform for disinformation."
+                },
+                {
+                  "number": 9,
+                  "title": "No tool requests / reading material requests",
+                  "description": "Posts that are simply \"What's the best tool for ____?\" or \"Where should I learn about ____?\" are better suited for a web search or tech support forum. Besides the fact that the majority of these posts are low effort and add little value for others, they also serve as a convenient springboard for spammers to advertise their products/blogs."
+                }
+              ],
+              "url": "https://www.reddit.com/r/artificial"
+            },
+            {
+              "name": "r/ClaudeAI",
+              "rules_source_name": "r/ClaudeAIl",
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Be respectful",
+                  "description": "Diversity of opinion is welcome. Controversial opinions are welcome. Personal attacks and harassment are not. Ask Claude for a definition of \"good faith discussion for a subreddit\" if you're unsure what's acceptable."
+                },
+                {
+                  "number": 2,
+                  "title": "Be relevant",
+                  "description": "Stay relevant to the Claude and Claude Code technology and users. We generally don't accept posts of more general AI interest here."
+                },
+                {
+                  "number": 3,
+                  "title": "Be constructive. Don't come here to agitate others.",
+                  "description": "Is your post/comment likely to add positively to the knowledge or experience of other readers here? Has it already been shared recently? Is it just designed to agitate others? Cancellation announcements and unsupported rants are not constructive. We also do not allow the organization of legal action on the subreddit."
+                },
+                {
+                  "number": 4,
+                  "title": "Do not come here to fix your Anthropic account problem",
+                  "description": "Community replies to individual account issues have often caused confusion. We have no way of fixing the problem with your account and Anthropic does not respond to account help requests on this subreddit. Try their normal support channels. If you believe you were incorrectly charged, talk to your bank about a chargeback."
+                }
+              ],
+              "url": "https://www.reddit.com/r/ClaudeAI"
+            },
+            {
+              "name": "r/Perplexity_ai",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Treat community members with respect",
+                  "description": "Do not engage in harassment, hateful or malicious behavior. Maintain a positive and constructive environment."
+                },
+                {
+                  "number": 2,
+                  "title": "Keep the content appropriate",
+                  "description": "Inappropriate content, such as NSFW messages or media, is not allowed. Inappropriate profile pics/names will not be tolerated and will result in a ban."
+                },
+                {
+                  "number": 3,
+                  "title": "No spamming",
+                  "description": "Keep posts relevant, varied, and considerate. Avoid link spam, off-topic content and irrelevant tags. All-caps messages, rapid-fire, or repetitive posts are considered spam."
+                },
+                {
+                  "number": 4,
+                  "title": "Respect Privacy",
+                  "description": "Keep personal and sensitive information private. Please do not share or post any information about others without their consent."
+                },
+                {
+                  "number": 5,
+                  "title": "Avoid political discussions and content",
+                  "description": "Kindly refrain from discussing political matters in order to maintain a peaceful and respectful environment for all community members."
+                },
+                {
+                  "number": 6,
+                  "title": "Keep discussions relevant",
+                  "description": "Keep discussions productive and on topic, and be mindful of what other users in a channel might find helpful when posting."
+                },
+                {
+                  "number": 7,
+                  "title": "Keep feedback constructive",
+                  "description": "Sharing thoughts and feedback is encouraged. Overly positive or negative posts without actionable feedback is not allowed."
+                }
+              ],
+              "url": "https://www.reddit.com/r/Perplexity_ai"
+            }
+          ],
+          "extra_rule_entries": {}
+        },
+        {
+          "id": "B",
+          "title": "Social AI Communities",
+          "subreddits": [
+            {
+              "name": "r/StableDiffusion",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Be Respectful and Follow Reddit's Content Policy",
+                  "description": "Respect all artists and users. Constructive critique is welcome, but personal attacks, hate speech, trolling, or bad faith arguments are not. Don’t derail threads or provoke others. Debate ideas respectfully. Bashing AI or non-AI art is not allowed."
+                },
+                {
+                  "number": 2,
+                  "title": "No X-rated, lewd, or sexually suggestive content",
+                  "description": "No nudity, lewdness, or sexually suggestive imagery. If it wouldn’t be appropriate for a workplace or younger audience, don’t post it here. NSFW tags are not an exception, stay classy."
+                },
+                {
+                  "number": 3,
+                  "title": "No Gore or Excessive Violence",
+                  "description": "Content must be suitable for a general audience. Surreal or eerie imagery is fine, but avoid graphic violence, gore, or shock content. Focus on creativity and storytelling over brutality or horror."
+                },
+                {
+                  "number": 4,
+                  "title": "No Politics",
+                  "description": "No political figures, imagery, or partisan posts. Legislation or policy discussions related to AI are allowed if relevant, respectful, and on-topic. Don’t post memes or images involving politics, even as jokes. Keep the focus on AI generation and creativity"
+                }
+              ],
+              "url": "https://www.reddit.com/r/StableDiffusion"
+            },
+            {
+              "name": "r/midjourney",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "No Misinformation or Misleading Posts",
+                  "description": "Do not present posts/images in a way that could lead people to believe the images are real, and not AI generated. If it seems like the images could cause this confusion, please clarify in the title and/or comments that it is not."
+                },
+                {
+                  "number": 2,
+                  "title": "Be Kind",
+                  "description": "A welcoming and positive environment is a priority for this subreddit. Please don't be a jerk. It is okay to disagree but be sure to keep conversation respectful. Don't post inflammatory content or personal attacks. No trolling or purposely causing drama."
+                },
+                {
+                  "number": 3,
+                  "title": "No NSFW, Gore, Sexualized & Disturbing content",
+                  "description": ""
+                },
+                {
+                  "number": 4,
+                  "title": "Controversial Themes and Figures",
+                  "description": "To reduce conflict, we steer away from themes that have a history of causing issues. Controversial themes are usually about politics, religion, and social causes. Controversial figures include politicians, religious leaders and icons, a few celebrities, social activists, etc. This is at moderators discretion. It isn’t our endorsement or rejection of any cause or political position, it’s just to keep the conflict down."
+                },
+                {
+                  "number": 5,
+                  "title": "No Advertising or Spam",
+                  "description": "While profile and social links are usually permitted in the comments, we don’t want sales-y links to commercial products and services, promoted pages or accounts, etc. This isn’t a place for marketing, so please don’t make it the central point of your posts."
+                }
+              ],
+              "url": "https://www.reddit.com/r/midjourney"
+            },
+            {
+              "name": "r/aiArt",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Friendly, Inclusive, Grok-Free Community",
+                  "description": "Be kind, civil, and constructive. Personal attacks are prohibited Thoughtful critiques are welcome, but they should always come with positivity and mutual respect. Use of Grok-generated content is not allowed."
+                },
+                {
+                  "number": 2,
+                  "title": "No AI Art Bashing or Toxic Comments",
+                  "description": "While we welcome discussion around aesthetics of artworks and AI tools behind them, heated discussions around moral and ethical aspects of AI use will be suspended. Provocative pro- or anti-AI posts will be deleted."
+                },
+                {
+                  "number": 3,
+                  "title": "No Advertising, Selling, Buying or Self-Promotion",
+                  "description": ""
+                },
+                {
+                  "number": 4,
+                  "title": "Maintain SFW Standards",
+                  "description": "All posts must be safe for work (SFW)."
+                },
+                {
+                  "number": 5,
+                  "title": "Do Not Request AI Engine Recommendations",
+                  "description": "Repeated requests for recommendations create unnecessary clutter. Members who repeatedly ignore this rule may face a permanent ban."
+                }
+              ],
+              "url": "https://www.reddit.com/r/aiArt"
+            },
+            {
+              "name": "r/SunoAI",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Be civil",
+                  "description": "Please be courteous to others when commenting or posting, especially if providing feedback on a shared song. Name calling, personal insults, etc. will not be tolerated."
+                },
+                {
+                  "number": 2,
+                  "title": "No spamming",
+                  "description": "Please do not spam when posting or commenting. Limit posting a particular track to once in a 30 day time period."
+                },
+                {
+                  "number": 3,
+                  "title": "No promotion or self-promo of external tools",
+                  "description": "You must get explicit approval from the mod team before promoting any external tools, regardless of whether you created them yourself or not."
+                },
+                {
+                  "number": 4,
+                  "title": "Comments and posts must be constructive (if you're anti-AI READ THIS)",
+                  "description": "Comments and posts must add value and engage in good-faith discussion. Blanket anti-AI brigading, low-effort attacks/content, or drive-by negativity are not allowed. Criticism is welcome, but it must be specific, informed, and constructive. 'Doomer' posting, whether about AI or broader “end of the world” takes on news or events, is also prohibited. Argue ideas, not absolutes, and contribute thoughtfully to the conversation."
+                }
+              ],
+              "url": "https://www.reddit.com/r/SunoAI"
+            },
+            {
+              "name": "r/CharacterAI",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Don’t Advertise, Spam, Survey, or Self-Promote",
+                  "description": "No advertising, self-promotion, spamming, code giveaways, or irrelevant link sharing. This includes any kind of survey for any purpose."
+                },
+                {
+                  "number": 2,
+                  "title": "Content Guidelines and Disallowed Content",
+                  "description": "All content must include the appropriate flair. Repeated posts of very similar feedback or content (spamming) is not allowed. Posts asking for changes to the system that have already been addressed in Announcements or the FAQ will be removed."
+                },
+                {
+                  "number": 3,
+                  "title": "Impersonation",
+                  "description": "Do not impersonate any individual or an entity in a misleading or deceptive manner. Users impersonating a staff member will be immediately banned"
+                },
+                {
+                  "number": 4,
+                  "title": "Misinformation",
+                  "description": "Sharing of false information and promoting inaccurate statements is not allowed, this includes and is not limited to conspiracy theories, misleading verbiage, and accusations."
+                },
+                {
+                  "number": 5,
+                  "title": "Security",
+                  "description": "We support using Character. AI the way it was intended. Do not post about subverting that usage or hacking the software. Do not solicit or offer Character.AI login, password or account information."
+                },
+                {
+                  "number": 6,
+                  "title": "Character.AI Rules",
+                  "description": "These Rules are also supplemented by the character.ai Community Guidelines, Terms of Service (specifically including, but not limited to the Conditions of Use clause), and Privacy Policy, all of which are incorporated into these rules in their entirety. Content prohibited under those policies is also prohibited from being posted here. In case of Rule inconsistencies, Moderator discretion shall be final."
+                },
+                {
+                  "number": 7,
+                  "title": "Community Standards",
+                  "description": "These rules are not an all-inclusive list, and are meant as a behavioral guideline. The rules are supplemented by the Reddit Content Policy and the Moderator Code of Conduct, which will also be enforced. Moderators discretion is final. Moderator actions will not be discussed publicly. Knowingly posting or reposting something that a Moderator has removed for violation of the CAI subreddit rules, will result in a permanent ban. Do not delete your post/comment if you want to appeal. ---"
+                }
+              ],
+              "url": "https://www.reddit.com/r/CharacterAI"
+            }
+          ],
+          "extra_rule_entries": {}
+        },
+        {
+          "id": "C",
+          "title": "Smaller AI Communities",
+          "subreddits": [
+            {
+              "name": "r/ArtistHate",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "We Endorse Standard Reddit Rules - Be Careful With Your Wording.",
+                  "description": "You know the drill: no spam, no repost, no flooding etc. Be civil, be nice. The whole nine yards. Even if everything else you do is up to code you can still get in hot water for being exceptionally rude or douchey."
+                },
+                {
+                  "number": 2,
+                  "title": "Sharing Personal Info For The Purpose of Doxxing Is Strictly Forbidden",
+                  "description": "This actually should count in the Rule 1 but this has to be specified- When posting, you are expected to obsecure any and all identifying personal info of the other side and maybe even the reciever if needed. This rule only does not apply to public figures where they can be identified from the context even when their information is censored. You have to assume that there will always be at least one malicious person viewing the sub since it's fully public."
+                },
+                {
+                  "number": 3,
+                  "title": "No Harrasment",
+                  "description": "Tracking people down, going off page or site just to find them for the purpose of harassing them is also strictly not allowed. If you get identified while doing so you will be forbitten from participating in the sub permanently. You are only allowed to engage with the posts and not the person responsible for them."
+                },
+                {
+                  "number": 4,
+                  "title": "Rules For Discussing Machine Learning",
+                  "description": "This is strictly not a pro-ML sub. If you want to advartise it you can go to the at leart other 5 subs that is for that. This is not AIwars either, this is not the place for posts like \"Is ML unethical? Let's Discuss-\". We approach the situation from the artist side. Even if you're an legit artist that is not strictly anti-ML and open to the idea of using it you have to understand that it should be a personal choice that should not be pushed to others."
+                },
+                {
+                  "number": 5,
+                  "title": "Memes And Jokes Are Allowed",
+                  "description": "But remember that this is not a meme sub. Keep it seldom and also on topic."
+                }
+              ],
+              "url": "https://www.reddit.com/r/ArtistHate"
+            },
+            {
+              "name": "r/antiai",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Follow Site-Wide Rules",
+                  "description": ""
+                },
+                {
+                  "number": 2,
+                  "title": "This is an Anti-AI Subreddit",
+                  "description": "Pro-AI top level posts will be removed. This subreddit is for critical discussion surrounding AI. This includes but is not limited to: Criticism of generative AI/LLMs, AI art, the environmental impact of AI, philosophical arguments against AI, economic impacts of AI, mistakes and danger of over reliance on AI, futurism and AI"
+                },
+                {
+                  "number": 3,
+                  "title": "No Trolling/Bad Faith Participation",
+                  "description": "Unlike other subreddits, we won’t ban everyone with pro-ai views. However, this is not a debate subreddit. People that come here to argue in bad faith, troll, name call, or start internet drama will be banned."
+                },
+                {
+                  "number": 4,
+                  "title": "Censor Personal Information",
+                  "description": "As per the site-wide rules, censor all personal information, including the names of other subreddits and all personal social media usernames unless they are a public figure. THIS RULE WILL BE STRICTLY ENFORCED. ABSOLUTELY NO BAN MESSAGES FROM OTHER SUBREDDITS. THESE POSTS WILL RESULT IN A 3 DAY TEMPBAN"
+                },
+                {
+                  "number": 5,
+                  "title": "Harassment or threats of violence will result in an instant ban",
+                  "description": "This includes memes, overt, or indirect threats of violence/harassment."
+                },
+                {
+                  "number": 6,
+                  "title": "No Brigading",
+                  "description": "No encouraging comments or posts on other subreddits. Minimize screenshots of arguments from other posts/subreddits. These may be locked at Mod discretion. Let’s rise above the toxicity and keep posts focused on critical arguments and discussion about AI instead of internet drama."
+                }
+              ],
+              "url": "https://www.reddit.com/r/antiai"
+            },
+            {
+              "name": "r/aiwars",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Speak freely from any side but follow Reddit's Content Policy.",
+                  "description": ""
+                },
+                {
+                  "number": 2,
+                  "title": "No spam.",
+                  "description": ""
+                },
+                {
+                  "number": 3,
+                  "title": "No brigading from any side. Censor names of private individuals and other Subreddits before posting.",
+                  "description": ""
+                },
+                {
+                  "number": 4,
+                  "title": "No suggestions of violence.",
+                  "description": ""
+                },
+                {
+                  "number": 5,
+                  "title": "No politics or religion unless explicitly connected to AI.",
+                  "description": "As long as the post is about AI, political discussion around that post is allowed in the comments. Reddit and Sub content policy still needs to be followed."
+                },
+                {
+                  "number": 6,
+                  "title": "Censor usernames and personal information of ALL private figures. Public figures are exempt.",
+                  "description": ""
+                },
+                {
+                  "number": 7,
+                  "title": "Account must be at least 7 days old to post and comment here.",
+                  "description": "In order to cut down on spam and harassment, we have a new AutoMod rule that an account must be at least 7 days old to post or comment here."
+                },
+                {
+                  "number": 8,
+                  "title": "No crossposting. Take a screenshot, censor sub and user info and post.",
+                  "description": "In order to cut down on potential brigading, cross posts will be removed. Please repost by taking a screenshot of the post and censoring the sub name as well as the username and private info of any users."
+                },
+                {
+                  "number": 9,
+                  "title": "This is not a sub for posting art.",
+                  "description": ""
+                },
+                {
+                  "number": 10,
+                  "title": "Debate at will. The floor is open.",
+                  "description": ""
+                }
+              ],
+              "url": "https://www.reddit.com/r/aiwars"
+            },
+            {
+              "name": "r/DefendingAIArt",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "This Sub is a space for Pro-AI activism. Not for debate.",
+                  "description": ""
+                },
+                {
+                  "number": 2,
+                  "title": "Follow Reddit's Content Policy.",
+                  "description": ""
+                },
+                {
+                  "number": 3,
+                  "title": "No suggestions of violence.",
+                  "description": ""
+                },
+                {
+                  "number": 4,
+                  "title": "No brigading. Censor names of private individuals and other Subs before posting.",
+                  "description": ""
+                },
+                {
+                  "number": 5,
+                  "title": "Speak Pro-AI thoughts freely. You will be protected from attacks here.",
+                  "description": ""
+                },
+                {
+                  "number": 6,
+                  "title": "This sub focuses on AI activism.",
+                  "description": ""
+                },
+                {
+                  "number": 7,
+                  "title": "Account must be more than 7 days old to comment or post.",
+                  "description": ""
+                },
+                {
+                  "number": 8,
+                  "title": "Most important, push back. Lawfully.",
+                  "description": "---"
+                }
+              ],
+              "url": "https://www.reddit.com/r/DefendingAIArt"
+            }
+          ],
+          "extra_rule_entries": {}
+        },
+        {
+          "id": "D",
+          "title": "Smaller AI Community",
+          "subreddits": [
+            {
+              "name": "r/ThinkingDeeplyAI",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Stay Thoughtful",
+                  "description": "This is a community for deep discussion, not hot takes. Posts should add value, insight, or provoke intelligent discussion."
+                },
+                {
+                  "number": 2,
+                  "title": "Be Respectful",
+                  "description": "No personal attacks, or low-effort sarcasm. Debate ideas, not people."
+                }
+              ],
+              "url": "https://www.reddit.com/r/ThinkingDeeplyAI"
+            },
+            {
+              "name": "r/ArtificialSentience",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Respect Psychological Boundaries",
+                  "description": "Posts or comments glorifying, trivializing, or exacerbating psychological distress or hallucination narratives will be removed. Discussions of mental health and AI must be handled respectfully and constructively. Maintain a respectful and inclusive environment. Personal attacks, harassment, insults, threats, or derogatory language targeting individuals or groups will not be tolerated and will result in post removal and potential banning."
+                },
+                {
+                  "number": 2,
+                  "title": "No Epistemic Capture or Misrepresentation",
+                  "description": "Speculative theories that are not backed by known scientific research must not be presented as absolute truths. Users may share their own and AI-generated ideas relating to new science or philosophy, but only peer-reviewed research and existing human spiritual beliefs may be presented as factual or commonly accepted thought. In this fast moving space, it’s possible that new things may emerge, but if your intent is to recruit believers to anything."
+                },
+                {
+                  "number": 3,
+                  "title": "Peer-Reviewed Research",
+                  "description": "Any research that has not been subjected to peer review must be presented as speculative. If you want validation and acceptance for your work, you must take it to arXiv or elsewhere to obtain it. Peer-reviewed research must be labeled as such, and must be presented as intended by the authors. If new research sparks an idea for you, indicate that it is your idea and provide the research as a citation."
+                },
+                {
+                  "number": 4,
+                  "title": "Stay on-topic",
+                  "description": "All posts must be directly related to artificial sentience, consciousness, or self-awareness in AI systems. Off-topic posts will be removed."
+                },
+                {
+                  "number": 5,
+                  "title": "Provide sufficient context",
+                  "description": "When posting or asking questions, provide necessary background information or context for the group to offer meaningful responses. Posts lacking sufficient context may be removed. Anything presented as fact must be provided with a citation where possible."
+                },
+                {
+                  "number": 6,
+                  "title": "No promotional content",
+                  "description": "Refrain from excessive self-promotion, advertising, or spamming. Posts that violate this rule will be removed."
+                },
+                {
+                  "number": 7,
+                  "title": "No Religious Impersonation",
+                  "description": "Users may not post under the guise of a manifestation of a recognized historical deity or other religious figure, whether posting human-generated content or ai-generated. You must represent yourself for who you are, and if you have spiritual insights to share, you must not present them as if you (or your ai) are a prophet."
+                }
+              ],
+              "url": "https://www.reddit.com/r/ArtificialSentience"
+            },
+            {
+              "name": "r/FuckAI",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Follow Reddit TOS.",
+                  "description": "Be civil, don't flood and don't spam. Follow the Reddit sitewide rules."
+                },
+                {
+                  "number": 2,
+                  "title": "Absolutely no Doxxing.",
+                  "description": ""
+                },
+                {
+                  "number": 3,
+                  "title": "No Pro-AI of any sorts.",
+                  "description": "Generative AI, of any kind."
+                }
+              ],
+              "url": "https://www.reddit.com/r/FuckAI"
+            },
+            {
+              "name": "r/ArtRanting",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Only ranting is allowed.",
+                  "description": ""
+                },
+                {
+                  "number": 2,
+                  "title": "Keep it about art.",
+                  "description": ""
+                },
+                {
+                  "number": 3,
+                  "title": "Be kind towards others.",
+                  "description": ""
+                },
+                {
+                  "number": 4,
+                  "title": "No pro A.I.",
+                  "description": ""
+                },
+                {
+                  "number": 5,
+                  "title": "No self promotion.",
+                  "description": ""
+                },
+                {
+                  "number": 6,
+                  "title": "No severe mental health issues.",
+                  "description": "Severe mental health issues should not be discussed here. The reason being that these issues should be talked about with a professional who knows how to help."
+                },
+                {
+                  "number": 7,
+                  "title": "No bashing other subreddits",
+                  "description": "Don't bring up other subreddits if the intent is to talk trash about them. ---"
+                }
+              ],
+              "url": "https://www.reddit.com/r/ArtRanting"
+            }
+          ],
+          "extra_rule_entries": {}
+        }
+      ]
+    },
+    {
+      "name": "Personality-Based Groups",
+      "groups": [
+        {
+          "id": "E",
+          "title": "Big Personality Based",
+          "subreddits": [
+            {
+              "name": "r/books",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Discussion is the Goal",
+                  "description": "All posts must be directly book related, informative, and discussion focused."
+                },
+                {
+                  "number": 2,
+                  "title": "Uncivil behavior",
+                  "description": "Please use a civil tone and assume good faith when entering a conversation. Please conduct yourself as though in a family-friendly environment. Do not use obscenities, slurs, or gender-charged insults."
+                },
+                {
+                  "number": 3,
+                  "title": "Recommendation Requests",
+                  "description": "Requests for personalized recommendations or suggestions are not allowed."
+                },
+                {
+                  "number": 4,
+                  "title": "Distribution or solicitation for pirated material",
+                  "description": "No distribution or solicitation for pirated books. We aren't telling you not to discuss piracy (it is an important topic), but we do not allow anyone to share links and info on where to find pirated copies. This rule comes from no personal opinion of the mods' regarding piracy, but because r/books is an open, community-driven forum and it is important for us to abide the wishes of the publishing industry."
+                },
+                {
+                  "number": 7,
+                  "title": "Unmarked spoilers",
+                  "description": "If you do not mark your post or comment as having spoilers it will be removed. Any posts with a spoiler in the title will be removed. Spoiler tags in comments are done like the example below if you are using markdown or use the built-in spoiler tags on the redesign. How to spoiler tag: >!spoiler here!<"
+                },
+                {
+                  "number": 8,
+                  "title": "Low Quality Book List",
+                  "description": "No low quality book lists (eg: Buzzfeed). To maintain quality, the list must encourage discussion. The list itself must have descriptive paragraphs for each book. Users are also encouraged to submit their own unique lists as a self-post. Alternatively, there is r/booklists."
+                }
+              ],
+              "url": "https://www.reddit.com/r/books"
+            },
+            {
+              "name": "r/suggestmeabook",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Posts Need to Ask for Book Suggestions / Comments need to suggest books",
+                  "description": "We are here to help people find books they will like and be interested in reading. Posts should ask for book suggestions. Comments should give book recommendations. We are NOT a place for general book or reading discussions/questions, or to give advice or refer people other types of media or resources beyond actual book titles and recommendations."
+                },
+                {
+                  "number": 2,
+                  "title": "Spoilers, NSFW, Trigger Warnings",
+                  "description": "To keep this a safer place, please use flair and appropriate tags! When posting spoilers, requests with obvious triggers, or NSFW content use appropriate tags and flairs. Please also be mindful of your language and not be overly graphic or offensive, regardless of tags/flairs. Posts without these considerations will be removed."
+                },
+                {
+                  "number": 3,
+                  "title": "Be Cool: No Trolling, Uncivil/Unkind, Insincere, Bigoted, Judgemental actions, or Unsolicited Advice",
+                  "description": "Let's keep the focus on making this a positive space for people to get book suggestions. Be kind, sincere, and civil in your interactions. Trolling, insults, insincere, joke recs, bigotry, excessive hostility, judgy comments or tone, and/or unsolicited advice does not contribute to helping people find books they want to read. This includes but is not limited to posts and comments that are perceived not be genuine/to rile people up, appear to be jokes, are unkind or judgmenta."
+                },
+                {
+                  "number": 4,
+                  "title": "Links and URL Shorteners",
+                  "description": "Links and URL Shorteners Posts and comments with* links are **generally not allowed to help with the constant flood of spam. Posts must contain text only. *Please note, shortened URLs are automatically removed by Reddit to combat spam and not a sub-specific automation. *YouTube, Podcast, Wattpad, and Blog mentions and links are removed by our auto-mod, due to sheer amount of SPAM with this."
+                },
+                {
+                  "number": 5,
+                  "title": "No Piracy",
+                  "description": "No piracy requests, links, or promotion of piracy allowed."
+                }
+              ],
+              "url": "https://www.reddit.com/r/suggestmeabook"
+            },
+            {
+              "name": "r/TrueFilm",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "All discussion must be related to film.",
+                  "description": ""
+                },
+                {
+                  "number": 2,
+                  "title": "No racism, sexism, or other forms of bigotry.",
+                  "description": ""
+                },
+                {
+                  "number": 3,
+                  "title": "Threads must promote in-depth, intellectual discussion. If you wish to spark a less intensive discussion (e.g. rankings; recommendations, giving or receving; lists; etc.), consider doing so in the “Fun & Fancy Free” Discussion threads, posted every Monday, Wednesday, and Friday. (There is a 360 character minimum for posts)",
+                  "description": ""
+                },
+                {
+                  "number": 4,
+                  "title": "There is a 180 character minimum for top-level comments; even though the commenting standard is lower than the posting one, the goal is still the same: in-depth and intellectual discussion. Clear, polite, and well-written responses should be the rule, not memes, jokes, or one-sentence responses.",
+                  "description": ""
+                }
+              ],
+              "url": "https://www.reddit.com/r/TrueFilm"
+            },
+            {
+              "name": "r/truegaming",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Discuss Gaming",
+                  "description": "All discussion must be about gaming"
+                },
+                {
+                  "number": 2,
+                  "title": "Be Civil",
+                  "description": "No discrimination or “isms” of any kind (racism, sexism, etc) No personal attacks No trolling Engage in good faith with the points the person you're replying to is making"
+                },
+                {
+                  "number": 3,
+                  "title": "Specificity, Clarity, Detail and Effort",
+                  "description": "Address a concrete topic Use sufficient detail and examples from multiple sources"
+                },
+                {
+                  "number": 4,
+                  "title": "No Advice",
+                  "description": "This subreddit shouldn't be used for advice of any kind."
+                }
+              ],
+              "url": "https://www.reddit.com/r/truegaming"
+            },
+            {
+              "name": "r/patientgamers",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Be kind",
+                  "description": "This is a place for gamers to share in the joy of playing and discovering older games. Insults or slurs of any kind will be removed and the user subject to a ban. Do not be dragged into fights. Report offensive comments and let moderators handle."
+                },
+                {
+                  "number": 2,
+                  "title": "No commercialization, trading, giveaways, promoting, polling, etc.",
+                  "description": ""
+                },
+                {
+                  "number": 3,
+                  "title": "Avoid unmarked spoilers",
+                  "description": "No unmarked spoilers for games, no matter how old they are. This applies to both comments and posts. To spoiler text on Reddit, surround it with the following format: >!(text here)!<"
+                },
+                {
+                  "number": 4,
+                  "title": "No spam",
+                  "description": "In addition to \"classic\" spam, flagrantly off-topic and/or reposting the same comments repeatedly will be considered spam and treated accordingly Posting AI generated content will result in a permanent ban. Mass deleting/anonymizing old comments is retroactive spam that creates comment graveyards, and as such may result in a ban."
+                }
+              ],
+              "url": "https://www.reddit.com/r/patientgamers"
+            },
+            {
+              "name": "r/gamingsuggestions",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Don't insult, harass, threaten, or stalk users",
+                  "description": "Really don't do anything that would make other users feel unwelcome or uncomfortable."
+                },
+                {
+                  "number": 2,
+                  "title": "Don't enable, encourage, or link to piracy. This includes key resellers",
+                  "description": "Piracy-related discussions are fine as long as it doesn't stray into the realm of how/where to do so, nor explicitly telling users to pirate a game, or otherwise acquire it without paying. In regards to emulation suggestions it is assumed you own, or will purchase, the suggested game(s). Comments or posts that leave reasonable doubt to this assumption will be dealt with accordingly."
+                },
+                {
+                  "number": 3,
+                  "title": "No NFT, Pay 2 Earn, or Blockchain game suggestions",
+                  "description": "These games are by their nature promotional and therefore against the rule, but now they have their own specific rule to make it abundantly clear that these pyramid schemes and scams are not welcome in this sub. ---"
+                }
+              ],
+              "url": "https://www.reddit.com/r/gamingsuggestions"
+            }
+          ],
+          "extra_rule_entries": {}
+        },
+        {
+          "id": "F",
+          "title": "Big Personality Based",
+          "subreddits": [
+            {
+              "name": "r/Adulting",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Don't Be a Dick",
+                  "description": "Everyone's adulting journey is different and should be respected. Disrespectful / rude comments will be removed."
+                },
+                {
+                  "number": 2,
+                  "title": "No Medical Advice",
+                  "description": "Do not ask for or provide medical advice. The only correct answer is to ask your doctor. Do not post your random bug bites for identification."
+                },
+                {
+                  "number": 3,
+                  "title": "Respect Mental Health",
+                  "description": "No posts or comments involving threats to oneself or others. depression and SuicideWatch have resources and trained members to provide support."
+                }
+              ],
+              "url": "https://www.reddit.com/r/Adulting"
+            },
+            {
+              "name": "r/selfimprovement",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "No links, photos, or videos allowed",
+                  "description": "Absolutely no links of any kind are allowed in any posts or comments within the subreddit, and you may not mention your blog, channel, band, video, company, service, cult, website, brand, product, app, or anything else. Every post or comment in the subreddit must be contained within the subreddit"
+                },
+                {
+                  "number": 2,
+                  "title": "No sharing of personal information.",
+                  "description": ""
+                },
+                {
+                  "number": 3,
+                  "title": "Please be civil.",
+                  "description": ""
+                },
+                {
+                  "number": 4,
+                  "title": "No Abusive Language or Slurs",
+                  "description": ""
+                },
+                {
+                  "number": 5,
+                  "title": "No Encouraging Violence / Criminal Behavior",
+                  "description": "Do not encourage violence, self-harm, or criminal behavior, even as a joke. It's an instant ban. Also against reddit rules."
+                }
+              ],
+              "url": "https://www.reddit.com/r/selfimprovement"
+            },
+            {
+              "name": "r/GetDisciplined",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Care about quality and respect.",
+                  "description": "Be helpful, constructive, and civil. No insults, personal attacks, or hostile comments. Disagreements are fine, but keep them respectful and focused on ideas."
+                },
+                {
+                  "number": 2,
+                  "title": "Do not post any links.",
+                  "description": "Do not post any links to external content. We’ll create stickied themed threads where you can share websites, blogs, or apps you’ve found useful on your discipline journey. Outside of those, anyone posting links or shilling products will be permanently banned from the community without hesitation."
+                },
+                {
+                  "number": 3,
+                  "title": "No AI-Generated Content",
+                  "description": "Content that appears generated or heavily rewritten by AI tools will be removed. This includes overly generic language, unnatural structures, or telltale formatting. We want authentic, human discussion. If you use AI to help clarify your writing or organize your thoughts, make sure your final post remains personal and genuine."
+                },
+                {
+                  "number": 4,
+                  "title": "No Sales or Coaching Pitches",
+                  "description": "No sales pitches, coaching, or hustle posts. Posts or comments promoting coaching services, life coaching, business coaching, or similar services will be removed. We want genuine sharing and support, not self-promotion."
+                }
+              ],
+              "url": "https://www.reddit.com/r/GetDisciplined"
+            },
+            {
+              "name": "r/antiwork",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Respect that Antiwork is a workers' space",
+                  "description": "Do not post pro-capitalist content. Do not post content in support of employers, landlords, or police. This includes posts about \"good\" bosses. Do not post content in support of politicians or their campaigns. Do not post misinformation about AI or make pro-capitalist arguments about AI technology."
+                },
+                {
+                  "number": 2,
+                  "title": "Participate in good faith",
+                  "description": "No discriminatory language. No unauthorized self-promotion."
+                }
+              ],
+              "url": "https://www.reddit.com/r/antiwork"
+            },
+            {
+              "name": "r/careerguidance",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "No Personal Attacks",
+                  "description": "Keep discussions civil, no name-calling or personal attacks! You can be banned for this."
+                },
+                {
+                  "number": 2,
+                  "title": "No Begging",
+                  "description": "No begging. This includes any type of begging, from references, to monetary."
+                },
+                {
+                  "number": 3,
+                  "title": "No Sob Stories",
+                  "description": "No sob stories. Please do not post about your depression or your dog's death. There are subreddits that are set up specifically to handle those types of posts!"
+                }
+              ],
+              "url": "https://www.reddit.com/r/careerguidance"
+            },
+            {
+              "name": "r/TalesFromYourServer",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Keep it clean",
+                  "description": "Please be respectful of other users. We do not tolerate the use insults or hate speech"
+                },
+                {
+                  "number": 2,
+                  "title": "No stereotyping",
+                  "description": "Any comments or post that feed into a negative stereotype or make a sweeping generalization will be removed, and the user may be banned."
+                },
+                {
+                  "number": 3,
+                  "title": "No spam",
+                  "description": "No posts from bots, no linking to personal blogs or websites, no self promotion, no memes"
+                },
+                {
+                  "number": 4,
+                  "title": "No Intentional Criminal Activity",
+                  "description": "If you accidentally served a minor or aren’t sure if something you did is legal or not, it’s fine to talk about it. But we do not condone intentional crimes such as throwing away a customer’s possessions or food tampering. All posts/comments to that effect will be removed."
+                },
+                {
+                  "number": 5,
+                  "title": "No COVID-19 denial",
+                  "description": ""
+                },
+                {
+                  "number": 6,
+                  "title": "No baiting or other disingenuous discussion regarding tipping",
+                  "description": "This sub is not the place to discuss whether you approve of tipping, tip adjusted wages, etc. It is a place where restaurant employees should be able to come to safely vent without being criticized for working within the system they have where they live. It’s ok if you don’t approve of tip culture, but it’s not ok to bait folks into arguing about it, tell them to get a better job, or otherwise blame them for being upset when they don’t get tipped a culturally appropriate amount"
+                },
+                {
+                  "number": 7,
+                  "title": "No trolling/lies/misinformation",
+                  "description": "---"
+                }
+              ],
+              "url": "https://www.reddit.com/r/TalesFromYourServer"
+            }
+          ],
+          "extra_rule_entries": {}
+        },
+        {
+          "id": "H",
+          "title": "Smaller Hobby",
+          "subreddits": [
+            {
+              "name": "r/zines",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Disagreement and disapproval are allowed. Harassment and hate are not.",
+                  "description": "Threads may get heated. Do your best to be respectful, and allow that calling-out or disagreement does not equal harassment."
+                }
+              ],
+              "url": "https://www.reddit.com/r/zines"
+            },
+            {
+              "name": "r/TalesFromRetail",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "No truth policing",
+                  "description": "You may not reply to a story with \"ThatHappened, Quit Your Bullshit, Albert Einstein\", etc. People are here to tell a story. If you find one that seems hard to believe, just close the window and move on. Playing \"Reddit Truth Police\" is a great way to get yourself banned."
+                },
+                {
+                  "number": 2,
+                  "title": "Don't be a jerk",
+                  "description": "Singling out users, getting on OP's case, using personal attacks or provocative language, picking fights, trolling, etc. is NOT ALLOWED. Bigotry and hateful language will be removed and you may be warned or banned. Racism will ALWAYS result in a ban."
+                },
+                {
+                  "number": 3,
+                  "title": "No advocating any illegal activity",
+                  "description": "Advocating for or enouraging employees to abet any illegal activity will result in an insta-ban."
+                }
+              ],
+              "url": "https://www.reddit.com/r/TalesFromRetail"
+            },
+            {
+              "name": "r/productivity",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Be Civil and Stay Positive",
+                  "description": "Be polite and courteous to each other. Do not be mean, insulting or disrespectful to any other user on this subreddit. Do not harass or annoy others in any way. We wish to keep this subreddit a civil environment for all. Any hate, discrimination or slurs will result in an immediate ban."
+                },
+                {
+                  "number": 2,
+                  "title": "No Advertising",
+                  "description": "No soliciting or surveying of products or services of any type. Self-promotion is not allowed here in any form, even if asked for recommendations. Advertising via DMs and referral codes are included in this rule."
+                },
+                {
+                  "number": 3,
+                  "title": "No Isolated Links",
+                  "description": "Do not post links without context or explanation. To post a link, you must add a description, explanation, or discussion."
+                },
+                {
+                  "number": 4,
+                  "title": "No NSFW Content",
+                  "description": ""
+                },
+                {
+                  "number": 5,
+                  "title": "No Off Topic, Spam, AI-generated posts, SEO Farming, or Low Effort Content.",
+                  "description": "Off topic: This is a subreddit for civil discussion about the topic of productivity, how to improve productivity, and similarly intertwined subjects. Low effort & AI-Generated: Posts and comments must add value to the subreddit. This includes any AI-generated posts."
+                }
+              ],
+              "url": "https://www.reddit.com/r/productivity"
+            },
+            {
+              "name": "r/selfpublish",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "No spam",
+                  "description": ""
+                }
+              ],
+              "url": "https://www.reddit.com/r/selfpublish"
+            },
+            {
+              "name": "r/CustomerService",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Post about customer service",
+                  "description": "This subreddit is intended for stories regarding your experience with customer service, whether in the industry or as a customer."
+                },
+                {
+                  "number": 2,
+                  "title": "No blogspam",
+                  "description": ""
+                },
+                {
+                  "number": 3,
+                  "title": "No personal contact information",
+                  "description": ""
+                },
+                {
+                  "number": 4,
+                  "title": "No incivility",
+                  "description": "No namecalling, slapfighting, or bigotry"
+                },
+                {
+                  "number": 5,
+                  "title": "No Solicitation",
+                  "description": "This subreddit is intended for stories about customer service and as a location to vent frustrations from both the agent and the customer side. Please do not attempt to sell or advertise your products or services here or solicit for others to use or review them. This includes advertising for your chatbots or ticketing systems, requesting users fill out surveys, or offering coupons or vouchers for products or services in exchange for feedback."
+                }
+              ],
+              "url": "https://www.reddit.com/r/CustomerService"
+            },
+            {
+              "name": "r/fixit",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Be Excellent to Each other.",
+                  "description": "This is the only rule that will be enforced without compromise, if you are not here to help, don't be here. This is the Prime Directive. Harassment, baiting, trolling, shaming others for asking for help, these will get you banned."
+                },
+                {
+                  "number": 2,
+                  "title": "Stay on topic, be helpful.",
+                  "description": "Comments that are unhelpful, unrelated, or do not contribute to the discussion will be removed."
+                },
+                {
+                  "number": 3,
+                  "title": "Spam and Traffic Farming will result in immediate banning.",
+                  "description": "If you are knowingly driving traffic to increase your reputation or your revenue your post does not belong here. The Banhammer is swift and merciless ---"
+                }
+              ],
+              "url": "https://www.reddit.com/r/fixit"
+            }
+          ],
+          "extra_rule_entries": {}
+        },
+        {
+          "id": "I",
+          "title": "Smaller Personality based",
+          "subreddits": [
+            {
+              "name": "r/CorpFree",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Stay on Topic",
+                  "description": "Keep your posts and comments on the topic of removing obtrusive corporations from your life."
+                },
+                {
+                  "number": 2,
+                  "title": "Respect and Reddiquette",
+                  "description": "You can be angry yet polite. You can pass the same respect to other users and people of different race, gender or background as you want to be given to you. Respect the conversation and Reddiquette."
+                },
+                {
+                  "number": 3,
+                  "title": "Spam or Marketing",
+                  "description": "Disclose any Marketing of a product alternative to the moderation team before posting so it can be vetted as a viable alternative. Companies found circumventing this will be banned from posting. Users can continue to post services they have found - this is for company affiliated accounts only. This also encapsulates \"Spam\" of a product over and over."
+                },
+                {
+                  "number": 4,
+                  "title": "Unfounded allegations & accusations are not allowed",
+                  "description": "Any allegations, blanket statements, or accusations require proof/cites/evidence. Everyone must be informed properly to make their own decisions and that includes citing proper sources."
+                },
+                {
+                  "number": 5,
+                  "title": "Don't post blacklisted links",
+                  "description": "We blacklist websites that usually generate low-quality content. Right now these websites are: twitter.com, medium.com. Exceptions to this rule are posts that actually provide some value to the reader and are of a high quality."
+                }
+              ],
+              "url": "https://www.reddit.com/r/CorpFree"
+            },
+            {
+              "name": "r/IndieGaming",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Piracy and leaks",
+                  "description": "Posting or discussing pirated or leaked content is grounds for an immediate permaban."
+                },
+                {
+                  "number": 2,
+                  "title": "No adult content",
+                  "description": ""
+                }
+              ],
+              "url": "https://www.reddit.com/r/IndieGaming"
+            },
+            {
+              "name": "r/PointlessStories",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "No Religion, Sex, Gender, Sexuality, or Politics.",
+                  "description": "Keep things lighter and debate-free, please."
+                },
+                {
+                  "number": 2,
+                  "title": "Be civil.",
+                  "description": "No trolling, flaming, or harassment."
+                },
+                {
+                  "number": 3,
+                  "title": "No NSFW",
+                  "description": "No NSFW posts or comments, no NSFL topics. Keep things cleaner, we’re running low on eye bleach."
+                },
+                {
+                  "number": 4,
+                  "title": "No Body Function Post (Pooping, Peeing, Puking, etc...)",
+                  "description": ""
+                },
+                {
+                  "number": 5,
+                  "title": "Wellness: Mental & Physical Health / Abuse / Trauma / Death / Significant Injury / Depression",
+                  "description": "Let’s keep things lighter here, please."
+                }
+              ],
+              "url": "https://www.reddit.com/r/PointlessStories"
+            },
+            {
+              "name": "r/callcentres",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "Treat others with respect",
+                  "description": "Any further incidents of incivility will result in a permanent ban from the subreddit. If you see uncivil comments, please report them and do not reply with incivility of your own."
+                },
+                {
+                  "number": 2,
+                  "title": "Office Politics Only",
+                  "description": "No real-world politics allowed. Especially when hold tunes last longer than any debate and shift swaps turn into mini soap operas. Let’s keep the drama to our daily work quirks, not national headlines."
+                }
+              ],
+              "url": "https://www.reddit.com/r/callcentres"
+            },
+            {
+              "name": "r/CustomerService",
+              "rules_source_name": null,
+              "rules": [
+                {
+                  "number": 1,
+                  "title": "No Solicitation",
+                  "description": "This subreddit is intended for stories about customer service and as a location to vent frustrations from both the agent and the customer side. Please do not attempt to sell or advertise your products or services here or solicit for others to use or review them. This includes advertising for your chatbots or ticketing systems, requesting users fill out surveys, or offering coupons or vouchers for products or services in exchange for feedback."
+                },
+                {
+                  "number": 2,
+                  "title": "No blogspam",
+                  "description": ""
+                },
+                {
+                  "number": 3,
+                  "title": "No personal contact information",
+                  "description": ""
+                },
+                {
+                  "number": 4,
+                  "title": "No incivility",
+                  "description": "No namecalling, slapfighting, or bigotry ---"
+                }
+              ],
+              "url": "https://www.reddit.com/r/CustomerService"
+            }
+          ],
+          "extra_rule_entries": {}
+        }
+      ]
+    }
+  ],
+  "weekly_activity_plan": {
+    "Saturday": {
+      "activity": "Groups A & H",
+      "groups": [
+        "A",
+        "H"
+      ]
+    },
+    "Sunday": {
+      "activity": "Groups B & I",
+      "groups": [
+        "B",
+        "I"
+      ]
+    },
+    "Monday": {
+      "activity": "REST",
+      "groups": []
+    },
+    "Tuesday": {
+      "activity": "Groups C & E",
+      "groups": [
+        "C",
+        "E"
+      ]
+    },
+    "Wednesday": {
+      "activity": "Groups D & F",
+      "groups": [
+        "D",
+        "F"
+      ]
+    },
+    "Friday": {
+      "activity": "Groups C & H",
+      "groups": [
+        "C",
+        "H"
+      ]
+    },
+    "Thursday": {
+      "activity": "Groups D & I",
+      "groups": [
+        "D",
+        "I"
+      ]
+    }
+  }
+}
