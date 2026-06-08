@@ -20,7 +20,8 @@ from schedule_loader import (
     get_groups_for_day,
     subreddit_context_for_post,
 )
-from reddit_poster import post_comment_safe, post_delay_secs
+from reddit_browser_poster import BrowserPoster
+from reddit_poster import post_comment_safe, post_delay_secs, reddit_login
 from scraper import scrape_subreddit
 from select_posts import select_top_posts
 
@@ -170,6 +171,7 @@ def process_group_post_comments(
     delay = post_delay_secs()
     posted = 0
     failed = 0
+    pending: list[tuple[int, str, str, str]] = []
 
     for i, doc in enumerate(comments, start=1):
         post_url = doc.get("post_url")
@@ -195,7 +197,14 @@ def process_group_post_comments(
             print(f"    (dry-run) would post {len(text)} chars to {post_url}")
             continue
 
-        result = post_comment_safe(post_url, text)
+        pending.append((i, comment_id, post_url, text))
+
+    if dry_run or not pending:
+        print(f"  Phase 4 complete: {posted} posted, {failed} failed")
+        return
+
+    def handle_result(comment_id: str, result: dict) -> None:
+        nonlocal posted, failed
         if result["ok"]:
             repo.mark_comment_posted(
                 comment_id,
@@ -209,9 +218,13 @@ def process_group_post_comments(
             failed += 1
             print(f"    ✗ {result['error']}")
 
-        if i < len(comments):
-            print(f"    waiting {delay}s before next post...")
-            time.sleep(delay)
+    with BrowserPoster() as browser:
+        for i, comment_id, post_url, text in pending:
+            result = post_comment_safe(post_url, text, browser=browser)
+            handle_result(comment_id, result)
+            if i < len(comments):
+                print(f"    waiting {delay}s before next post...")
+                time.sleep(delay)
 
     print(f"  Phase 4 complete: {posted} posted, {failed} failed")
 
@@ -324,10 +337,15 @@ def main() -> None:
     parser.add_argument("--skip-comments", action="store_true", help="Stop after scrape + select")
     parser.add_argument("--comments-only", action="store_true", help="Generate comments from existing selected_posts")
     parser.add_argument("--post-comments", action="store_true", help="Publish generated comments to Reddit")
+    parser.add_argument("--reddit-login", action="store_true", help="Open browser to log into Reddit (saves session)")
     parser.add_argument("--dry-run", action="store_true", help="With --post-comments: show what would be posted without posting")
     parser.add_argument("--resume", metavar="RUN_KEY", help="Resume an existing run (e.g. 20260608_122706)")
     parser.add_argument("--group", action="append", dest="groups", help="Process only specific group(s), e.g. --group A")
     args = parser.parse_args()
+
+    if args.reddit_login:
+        reddit_login()
+        return
 
     if not ssh_enabled() and not os.getenv("MONGODB_URI"):
         raise ValueError("Set MONGODB_URI or enable MONGODB_SSH_ENABLED in .env")

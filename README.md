@@ -65,13 +65,11 @@ LLM_PROVIDER=openai
 OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-5.4
 
-# Reddit API (for posting comments — create app at https://www.reddit.com/prefs/apps)
-REDDIT_CLIENT_ID=...
-REDDIT_CLIENT_SECRET=...
+# Reddit posting (username + password only — no API app needed)
 REDDIT_USERNAME=your_reddit_username
 REDDIT_PASSWORD=your_reddit_password
-REDDIT_USER_AGENT=reddit-bot/1.0 (by u/your_reddit_username)
 REDDIT_POST_DELAY_SECS=45
+REDDIT_BROWSER_HEADLESS=true
 ```
 
 ## Run
@@ -84,6 +82,10 @@ python3 app.py 7 3 --skip-comments   # scrape + select only
 
 # Resume: generate comments for group A from existing run
 python3 app.py 1 --resume 20260608_122706 --group A --comments-only
+
+# One-time setup: install browser + log into Reddit
+python3 -m playwright install chromium
+python3 app.py 1 --reddit-login
 
 # Post generated comments to Reddit (dry-run first)
 python3 app.py 1 --resume 20260608_122706 --group A --post-comments --dry-run
@@ -106,16 +108,19 @@ python3 app.py 1 --resume 20260608_122706 --group A --post-comments
 Phase 1: scrape all subreddits → save each batch to raw_posts
 Phase 2: rank across group      → save top N to selected_posts
 Phase 3: generate comments      → save to comments (optional)
-Phase 4: post comments          → publish to Reddit via PRAW (optional)
+Phase 4: post comments          → publish to Reddit via browser (username + password)
 ```
 
-### Reddit API setup
+### Reddit posting
 
-1. Go to [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) → **create another app**
-2. Type: **script**, name anything, redirect URI: `http://localhost:8080`
-3. Copy **client id** (under the app name) and **secret** into `.env`
-4. Use your Reddit **username** and **password** (not Gmail — Gmail is only for account recovery/2FA)
-5. If 2FA is enabled on your Reddit account, password-based API login will fail — disable 2FA or use a dedicated bot account without 2FA
+Uses Playwright + a saved browser session. No `client_id` needed.
+
+1. Set `REDDIT_USERNAME` and `REDDIT_PASSWORD` in `.env`
+2. Run `python3 -m playwright install chromium` once
+3. Run `python3 app.py 1 --reddit-login` if 2FA/captcha blocks auto-login
+4. Post with `--post-comments`
+
+Session is saved in `.reddit_browser_session/` (gitignored).
 
 ### Example queries
 

@@ -153,6 +153,7 @@ activemq-data/
 # Environments
 .env
 .envrc
+.reddit_browser_session/
 .venv
 env/
 venv/
