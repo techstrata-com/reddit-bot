@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 
-from playwright.sync_api import BrowserContext, Locator, Page, sync_playwright
+from playwright.sync_api import BrowserContext, Error as PlaywrightError, Locator, Page, sync_playwright
 
 ROOT = Path(__file__).parent
 DEFAULT_SESSION_DIR = ROOT / ".reddit_browser_session"
@@ -82,16 +82,33 @@ def _is_blocked(page: Page) -> bool:
     return "blocked by network security" in body or "whoa there, pardner" in body
 
 
+def _is_reddit_challenge(value: str) -> bool:
+    lower = value.lower()
+    return "js_challenge=1" in lower or "reddit.com/challenge" in lower
+
+
 def _wait_for_login_form(page: Page) -> None:
     page.locator('input[name="username"]').wait_for(state="visible", timeout=25000)
 
 
 def is_logged_in(page: Page) -> bool:
-    page.goto("https://www.reddit.com/settings", wait_until="domcontentloaded", timeout=60000)
+    for attempt in range(3):
+        try:
+            page.goto("https://www.reddit.com/settings", wait_until="domcontentloaded", timeout=60000)
+            break
+        except PlaywrightError as err:
+            message = str(err).lower()
+            if "interrupted by another navigation" not in message or not _is_reddit_challenge(message):
+                raise
+            if attempt == 2:
+                return False
+            page.wait_for_timeout(5000)
+
     page.wait_for_timeout(2000)
     if _is_blocked(page):
         return False
-    return "login" not in page.url.lower()
+    current_url = page.url.lower()
+    return "login" not in current_url and not _is_reddit_challenge(current_url)
 
 
 def login_with_password(page: Page) -> None:
@@ -224,10 +241,10 @@ def interactive_login() -> None:
         _prepare_page(page)
         page.goto("https://www.reddit.com/", wait_until="domcontentloaded")
         print("\nBrowser opened. Click Log In and sign in to Reddit (complete 2FA if asked).")
-        print("When you are logged in, press Enter here...")
+        print("When you are logged in and Reddit has finished any security check, press Enter here...")
         input()
         if not is_logged_in(page):
-            raise RuntimeError("Still not logged in — try again.")
+            raise RuntimeError("Still not logged in. Wait for Reddit's security check to finish, then try again.")
         print(f"Session saved in {session_dir()}")
         context.close()
 

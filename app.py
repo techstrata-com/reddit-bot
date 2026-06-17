@@ -76,7 +76,7 @@ def generate_comments(
     for post in posts:
         reddit_post_id = post.get("id") or post.get("parsedId") or post.get("reddit_post_id")
         if repo.has_comment(pipeline_run_id, reddit_post_id):
-            print(f"  skip [{reddit_post_id}] — comment already exists")
+            print(f"  skip [{reddit_post_id}] - comment already exists")
             continue
 
         subreddit_name, subreddit_rules = subreddit_context_for_post(post, group)
@@ -126,7 +126,7 @@ def generate_comments(
         )
         repo.increment_stat(pipeline_run_id, "comments")
         generated += 1
-        print(f"  ✓ comment saved ({latency_ms}ms)")
+        print(f"  OK comment saved ({latency_ms}ms)")
 
     return generated
 
@@ -180,19 +180,19 @@ def process_group_post_comments(
         comment_id = str(doc["_id"])
 
         if not post_url:
-            print(f"  [{i}/{len(comments)}] skipped — missing post_url")
+            print(f"  [{i}/{len(comments)}] skipped - missing post_url")
             repo.mark_comment_failed(comment_id, "missing post_url")
             failed += 1
             continue
 
         if not text:
-            print(f"  [{i}/{len(comments)}] skipped — empty comment")
+            print(f"  [{i}/{len(comments)}] skipped - empty comment")
             repo.mark_comment_failed(comment_id, "empty generated_comment")
             failed += 1
             continue
 
         if dry_run:
-            print(f"  [{i}/{len(comments)}] r/{doc.get('subreddit_name')} — {title}...")
+            print(f"  [{i}/{len(comments)}] r/{doc.get('subreddit_name')} - {title}...")
             print(f"    (dry-run) would post {len(text)} chars to {post_url}")
             continue
 
@@ -211,15 +211,15 @@ def process_group_post_comments(
                 reddit_comment_url=result["reddit_comment_url"],
             )
             posted += 1
-            print(f"    ✓ posted → {result['reddit_comment_url']}")
+            print(f"    OK posted -> {result['reddit_comment_url']}")
         else:
             repo.mark_comment_failed(comment_id, result["error"])
             failed += 1
-            print(f"    ✗ {result['error']}")
+            print(f"    ERROR {result['error']}")
 
     with BrowserPoster() as browser:
         for i, comment_id, post_url, text, subreddit, title in pending:
-            print(f"  [{i}/{len(comments)}] r/{subreddit} — {title}...")
+            print(f"  [{i}/{len(comments)}] r/{subreddit} - {title}...")
             result = post_comment_safe(post_url, text, browser=browser)
             handle_result(comment_id, result)
             if i < len(comments):
@@ -276,7 +276,7 @@ def process_group(
             )
             total_saved += saved
             all_items.extend(result["items"])
-            print(f"  ✓ saved {saved} raw posts to DB (total so far: {total_saved})")
+            print(f"  OK saved {saved} raw posts to DB (total so far: {total_saved})")
 
         repo.increment_stat(pipeline_run_id, "raw_posts", total_saved)
         print(f"\n  Phase 1 complete: {len(all_items)} posts scraped, {total_saved} saved to raw_posts")
@@ -341,7 +341,7 @@ def filter_groups(groups: list[Group], group_ids: list[str] | None) -> list[Grou
 def main() -> None:
     day_help = ", ".join(f"{n}={name}" for n, name in DAY_NUMBERS.items())
     parser = argparse.ArgumentParser(
-        description="Scrape → rank → save to MongoDB (raw_posts + selected_posts).",
+        description="Scrape -> rank -> save to MongoDB (raw_posts + selected_posts).",
         epilog=f"Day numbers: {day_help}. Monday (3) is REST.",
     )
     parser.add_argument("day", type=int, choices=sorted(DAY_NUMBERS), help="Weekday number")
@@ -364,13 +364,15 @@ def main() -> None:
 
     day_name, groups = get_groups_for_day(SCHEDULE_FILE, args.day)
     if not groups and not args.comments_only:
-        print(f"{day_name} is REST — no groups scheduled.")
+        print(f"{day_name} is REST - no groups scheduled.")
         return
 
     groups = filter_groups(groups, args.groups)
     all_groups_map = build_groups(SCHEDULE_FILE)
 
+    print("Connecting to MongoDB...", flush=True)
     repo = PipelineRepository()
+    print("MongoDB connection ready.", flush=True)
 
     if args.resume:
         run_doc = repo.get_run_by_key(args.resume)
@@ -408,12 +410,12 @@ def main() -> None:
             raise ValueError("No groups to process")
 
         mode = "dry-run" if args.dry_run else "live"
-        print(f"Post comments only ({mode}) — groups: {[g.id for g in groups]}")
+        print(f"Post comments only ({mode}) - groups: {[g.id for g in groups]}")
 
         try:
             for group in groups:
                 print(f"\n{'='*50}")
-                print(f"GROUP [{group.id}] {group.title} — post comments")
+                print(f"GROUP [{group.id}] {group.title} - post comments")
                 print(f"{'='*50}")
                 process_group_post_comments(
                     repo,
@@ -442,12 +444,12 @@ def main() -> None:
         if not groups:
             raise ValueError("No groups to process")
 
-        print(f"Comments only — groups: {[g.id for g in groups]}")
+        print(f"Comments only - groups: {[g.id for g in groups]}")
 
         try:
             for group in groups:
                 print(f"\n{'='*50}")
-                print(f"GROUP [{group.id}] {group.title} — generate comments")
+                print(f"GROUP [{group.id}] {group.title} - generate comments")
                 print(f"{'='*50}")
                 process_group_comments_only(
                     repo, pipeline_run_id, run_key, day_number, day_name, group
@@ -461,19 +463,19 @@ def main() -> None:
     with CONFIG_PATH.open(encoding="utf-8") as f:
         base_config = json.load(f)
 
-    phases = "scrape → select"
+    phases = "scrape -> select"
     if not args.skip_comments:
-        phases += " → generate"
+        phases += " -> generate"
         if args.post_comments:
-            phases += " → post"
-    print(f"Day {args.day} ({day_name}) — groups {[g.id for g in groups]} — top {args.top_n}/group")
+            phases += " -> post"
+    print(f"Day {args.day} ({day_name}) - groups {[g.id for g in groups]} - top {args.top_n}/group")
     print(f"Pipeline: {phases}")
     print(f"Run: {run_key}")
 
     try:
         for group in groups:
             print(f"\n{'='*50}")
-            print(f"GROUP [{group.id}] {group.title} — {len(group.subreddits)} subreddits")
+            print(f"GROUP [{group.id}] {group.title} - {len(group.subreddits)} subreddits")
             print(f"{'='*50}")
             process_group(
                 repo,

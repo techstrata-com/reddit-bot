@@ -8,6 +8,7 @@ from pymongo import MongoClient
 from pymongo.database import Database
 
 _local_port: int | None = None
+_tunnel_process: subprocess.Popen[str] | None = None
 
 
 def ssh_enabled() -> bool:
@@ -31,15 +32,30 @@ def _wait_for_port(port: int, timeout: float = 30.0) -> None:
     raise RuntimeError(f"SSH tunnel port {port} not reachable after {timeout}s")
 
 
-def _kill_tunnel_on_port(port: int) -> None:
-    subprocess.run(
-        ["sh", "-c", f"kill $(lsof -t -iTCP:{port} -sTCP:LISTEN) 2>/dev/null || true"],
-        check=False,
-    )
+def _process_output(process: subprocess.Popen[str]) -> str:
+    try:
+        stdout, stderr = process.communicate(timeout=1)
+    except subprocess.TimeoutExpired:
+        return ""
+    return (stderr or stdout or "").strip()
+
+
+def _stop_ssh_tunnel() -> None:
+    global _local_port, _tunnel_process
+
+    if _tunnel_process and _tunnel_process.poll() is None:
+        _tunnel_process.terminate()
+        try:
+            _tunnel_process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            _tunnel_process.kill()
+
+    _tunnel_process = None
+    _local_port = None
 
 
 def _start_ssh_tunnel() -> int:
-    global _local_port
+    global _local_port, _tunnel_process
 
     ssh_host = os.getenv("MONGODB_SSH_HOST", "mdstudio.oriele.ai")
     ssh_user = os.getenv("MONGODB_SSH_USER", "oriele")
@@ -50,12 +66,11 @@ def _start_ssh_tunnel() -> int:
     local_port = int(os.getenv("MONGODB_SSH_LOCAL_PORT", "0")) or _free_port()
     remote_target = f"{remote_host}:{remote_port}"
 
-    if _local_port:
-        _kill_tunnel_on_port(_local_port)
+    if _tunnel_process:
+        _stop_ssh_tunnel()
 
     cmd = [
         "ssh",
-        "-f",
         "-i", ssh_key,
         "-N",
         "-L", f"127.0.0.1:{local_port}:{remote_target}",
@@ -66,11 +81,27 @@ def _start_ssh_tunnel() -> int:
         f"{ssh_user}@{ssh_host}",
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(f"SSH tunnel failed: {result.stderr.strip() or result.stdout.strip()}")
+    print(f"Opening MongoDB SSH tunnel on 127.0.0.1:{local_port}...", flush=True)
+    _tunnel_process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
 
-    _wait_for_port(local_port)
+    try:
+        _wait_for_port(local_port)
+    except Exception as err:
+        output = _process_output(_tunnel_process)
+        _stop_ssh_tunnel()
+        raise RuntimeError(output or str(err)) from err
+
+    if _tunnel_process.poll() is not None:
+        output = _process_output(_tunnel_process)
+        _stop_ssh_tunnel()
+        raise RuntimeError(f"SSH tunnel failed: {output or 'process exited'}")
+
+    print("MongoDB SSH tunnel ready.", flush=True)
     _local_port = local_port
     return local_port
 
@@ -78,7 +109,9 @@ def _start_ssh_tunnel() -> int:
 def _mongo_uri() -> str:
     if ssh_enabled():
         global _local_port
-        if _local_port is None:
+        if _local_port is None or (
+            _tunnel_process is not None and _tunnel_process.poll() is not None
+        ):
             _local_port = _start_ssh_tunnel()
         return f"mongodb://127.0.0.1:{_local_port}"
 
@@ -99,8 +132,5 @@ def get_db() -> Database:
 
 
 def close_connection() -> None:
-    global _local_port
     get_client.cache_clear()
-    if _local_port:
-        _kill_tunnel_on_port(_local_port)
-        _local_port = None
+    _stop_ssh_tunnel()
