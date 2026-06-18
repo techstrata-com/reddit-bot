@@ -6,16 +6,19 @@
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python3 -m playwright install chromium
 ```
+
+Google Chrome must be installed (Selenium uses your local Chrome browser).
 
 Fill in `.env` (API keys, MongoDB SSH, Reddit username/password).
 
-Log into Reddit once (saves browser session):
+Log into Reddit with credentials from `.env` (saves browser session):
 
 ```bash
 python3 app.py 1 --reddit-login
 ```
+
+Requires `REDDIT_USERNAME` and `REDDIT_PASSWORD` in `.env`. Login is fully automated via Selenium.
 
 ---
 
@@ -207,7 +210,7 @@ Thin wrapper for posting comments — calls the browser poster and normalizes su
 ---
 
 ### `reddit_browser_poster.py`
-Playwright-based Reddit automation: login, saved session, and posting comments on `www.reddit.com`. Used by `reddit_poster.py`; session stored in `.reddit_browser_session/`.
+Selenium-based Reddit automation: login, saved session, and posting comments on `www.reddit.com`. Used by `reddit_poster.py`; session stored in `.reddit_browser_session/`.
 
 ---
 

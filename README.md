@@ -82,10 +82,9 @@ python3 app.py 3            # Monday — exits (REST)
 python3 app.py 7 3 --skip-comments   # scrape + select only
 
 # Resume: generate comments for group A from existing run
-python3 app.py 1 --resume 20260608_122706 --group A --comments-only
+python3 app.py 1 --resume 20260617_090906 --group A --comments-only
 
-# One-time setup: install browser + log into Reddit
-python3 -m playwright install chromium
+# One-time setup: auto-login to Reddit with .env credentials (requires Google Chrome)
 python3 app.py 1 --reddit-login
 
 # Post generated comments to Reddit (dry-run first)
@@ -114,12 +113,13 @@ Phase 4: post comments          → publish to Reddit via browser (username + pa
 
 ### Reddit posting
 
-Uses Playwright + a saved browser session. No `client_id` needed.
+Uses Selenium + Google Chrome with a saved browser session. No `client_id` needed.
 
-1. Set `REDDIT_USERNAME` and `REDDIT_PASSWORD` in `.env`
-2. Run `python3 -m playwright install chromium` once
-3. Run `python3 app.py 1 --reddit-login` if 2FA/captcha blocks auto-login
-4. Post with `--post-comments`
+1. Install Google Chrome
+2. Set `REDDIT_USERNAME` and `REDDIT_PASSWORD` in `.env`
+3. Posting auto-logs in via Selenium when needed
+4. Optional: run `python3 app.py 1 --reddit-login` once to save a session
+5. Post with `--post-comments`
 
 Session is saved in `.reddit_browser_session/` (gitignored).
 

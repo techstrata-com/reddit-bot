@@ -349,7 +349,11 @@ def main() -> None:
     parser.add_argument("--skip-comments", action="store_true", help="Stop after scrape + select")
     parser.add_argument("--comments-only", action="store_true", help="Generate comments from existing selected_posts")
     parser.add_argument("--post-comments", action="store_true", help="Also post comments to Reddit (Phase 4)")
-    parser.add_argument("--reddit-login", action="store_true", help="Open browser to log into Reddit (saves session)")
+    parser.add_argument(
+        "--reddit-login",
+        action="store_true",
+        help="Log into Reddit with REDDIT_USERNAME / REDDIT_PASSWORD (saves session)",
+    )
     parser.add_argument("--dry-run", action="store_true", help="With --post-comments: show what would be posted without posting")
     parser.add_argument("--resume", metavar="RUN_KEY", help="Resume an existing run (e.g. 20260608_122706)")
     parser.add_argument("--group", action="append", dest="groups", help="Process only specific group(s), e.g. --group A")

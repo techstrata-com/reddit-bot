@@ -1,6 +1,6 @@
 import os
 
-from reddit_browser_poster import BrowserPoster, interactive_login
+from reddit_browser_poster import BrowserPoster, automated_login
 
 
 def post_comment_safe(post_url: str, text: str, *, browser: BrowserPoster | None = None) -> dict:
@@ -20,4 +20,4 @@ def post_delay_secs() -> int:
 
 
 def reddit_login() -> None:
-    interactive_login()
+    automated_login()

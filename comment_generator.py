@@ -4,6 +4,16 @@ from comment_generator_prompt import comment_generator_prompt
 from schedule_loader import format_subreddit_rules
 
 
+def _llm_temperature() -> float | None:
+    raw = os.getenv("LLM_TEMPERATURE", "").strip()
+    if raw == "":
+        return None
+    try:
+        return float(raw)
+    except ValueError as err:
+        raise ValueError(f"Invalid LLM_TEMPERATURE (must be a number): {raw!r}") from err
+
+
 def render_prompt(
     *,
     subreddit_name: str,
@@ -60,10 +70,12 @@ def _generate_openai(prompt: str) -> str:
         raise ValueError("OPENAI_API_KEY is not set in .env")
 
     model = os.getenv("OPENAI_MODEL", "gpt-5.4")
+    temperature = _llm_temperature()
     client = OpenAI(api_key=api_key)
     response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
+        temperature=temperature,
     )
     return (response.choices[0].message.content or "").strip()
 
@@ -76,6 +88,11 @@ def _generate_gemini(prompt: str) -> str:
         raise ValueError("GEMINI_API_KEY is not set in .env")
 
     model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    temperature = _llm_temperature()
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(model=model, contents=prompt)
+    response = client.models.generate_content(
+        model=model,
+        contents=prompt,
+        config={"temperature": temperature} if temperature is not None else None,
+    )
     return (response.text or "").strip()
