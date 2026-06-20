@@ -202,6 +202,9 @@ def process_group_post_comments(
         print(f"  Phase 4 complete: {posted} posted, {failed} failed")
         return
 
+    repo.set_run_phase(pipeline_run_id, f"posting_group_{group.id}")
+    print(f"  posting {len(pending)} comment(s) via Selenium browser...")
+
     def handle_result(comment_id: str, result: dict) -> None:
         nonlocal posted, failed
         if result["ok"]:
@@ -218,11 +221,11 @@ def process_group_post_comments(
             print(f"    ERROR {result['error']}")
 
     with BrowserPoster() as browser:
-        for i, comment_id, post_url, text, subreddit, title in pending:
+        for idx, (i, comment_id, post_url, text, subreddit, title) in enumerate(pending):
             print(f"  [{i}/{len(comments)}] r/{subreddit} - {title}...")
             result = post_comment_safe(post_url, text, browser=browser)
             handle_result(comment_id, result)
-            if i < len(comments):
+            if idx < len(pending) - 1:
                 print(f"    waiting {delay}s before next post...")
                 time.sleep(delay)
 

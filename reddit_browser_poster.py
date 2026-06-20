@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -8,6 +9,7 @@ from urllib.parse import urlparse
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webelement import WebElement
@@ -16,15 +18,60 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 ROOT = Path(__file__).parent
 DEFAULT_SESSION_DIR = ROOT / ".reddit_browser_session"
-REDDIT_LOGIN_URL = os.getenv("REDDIT_LOGIN_URL", "https://reddit.com/login").strip()
+
+
+def use_old_ui() -> bool:
+    return os.getenv("REDDIT_USE_OLD_UI", "false").lower() in ("1", "true", "yes")
+
+
+def reddit_login_url() -> str:
+    configured = os.getenv("REDDIT_LOGIN_URL", "").strip()
+    if use_old_ui():
+        if configured and "old.reddit" in configured:
+            return configured
+        return "https://old.reddit.com/login"
+    return configured or "https://www.reddit.com/login"
+
+
+def reddit_settings_url() -> str:
+    return "https://old.reddit.com/prefs" if use_old_ui() else "https://www.reddit.com/settings"
 
 
 def session_dir() -> Path:
     return Path(os.getenv("REDDIT_BROWSER_SESSION_DIR", DEFAULT_SESSION_DIR))
 
 
-def headless() -> bool:
-    return os.getenv("REDDIT_BROWSER_HEADLESS", "false").lower() in ("1", "true", "yes")
+def auto_clear_session_enabled() -> bool:
+    return os.getenv("REDDIT_AUTO_CLEAR_SESSION", "true").lower() in ("1", "true", "yes")
+
+
+def clear_browser_session() -> None:
+    path = session_dir()
+    if not path.exists():
+        return
+    try:
+        shutil.rmtree(path)
+        print(f"  deleted stale browser session: {path}")
+    except Exception as err:
+        raise RuntimeError(
+            f"Could not delete browser session at {path}. Close all Chrome windows and retry."
+        ) from err
+
+
+def _should_auto_clear_session(err: Exception) -> bool:
+    if not auto_clear_session_enabled():
+        return False
+    message = str(err).lower()
+    triggers = (
+        "login verification failed",
+        "login failed",
+        "login page did not settle",
+        "could not find login fields",
+        "reddit blocked",
+        "verification did not finish",
+        "not logged in on the post page",
+    )
+    return any(trigger in message for trigger in triggers)
 
 
 def browser_channel() -> str | None:
@@ -33,25 +80,13 @@ def browser_channel() -> str | None:
 
 
 def to_reddit(url: str) -> str:
-    """Normalize any Reddit URL to www.reddit.com (never opens old.reddit.com)."""
+    """Normalize any Reddit URL to the configured UI host."""
     parsed = urlparse(url)
     host = parsed.netloc.removeprefix("www.")
-    if host in ("reddit.com", "old.reddit.com"):
-        return parsed._replace(netloc="www.reddit.com").geturl()
+    if host.endswith("reddit.com"):
+        netloc = "old.reddit.com" if use_old_ui() else "www.reddit.com"
+        return parsed._replace(netloc=netloc).geturl()
     return url
-
-
-def to_old_reddit(url: str) -> str:
-    """Normalize post URLs to old.reddit.com for reliable comment posting."""
-    parsed = urlparse(url)
-    host = parsed.netloc.removeprefix("www.")
-    if host in ("reddit.com", "old.reddit.com", "www.reddit.com"):
-        return parsed._replace(netloc="old.reddit.com").geturl()
-    return url
-
-
-def use_old_reddit_for_comments() -> bool:
-    return os.getenv("REDDIT_USE_OLD_UI", "true").lower() in ("1", "true", "yes")
 
 
 def _credentials() -> tuple[str, str]:
@@ -64,10 +99,7 @@ def _select_all_key() -> str:
     return Keys.COMMAND if sys.platform == "darwin" else Keys.CONTROL
 
 
-def _build_chrome_options(*, headless_mode: bool) -> Options:
-    if headless_mode:
-        print("  warning: REDDIT_BROWSER_HEADLESS=true — Reddit hides the comment box; use false")
-
+def _build_chrome_options() -> Options:
     path = session_dir()
     path.mkdir(parents=True, exist_ok=True)
 
@@ -79,7 +111,7 @@ def _build_chrome_options(*, headless_mode: bool) -> Options:
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
 
-    if headless_mode:
+    if os.getenv("REDDIT_BROWSER_HEADLESS", "false").lower() in ("1", "true", "yes"):
         options.add_argument("--headless=new")
 
     channel = browser_channel()
@@ -89,10 +121,9 @@ def _build_chrome_options(*, headless_mode: bool) -> Options:
     return options
 
 
-def _create_driver(*, headless_mode: bool) -> webdriver.Chrome:
-    options = _build_chrome_options(headless_mode=headless_mode)
+def _create_driver() -> webdriver.Chrome:
     try:
-        driver = webdriver.Chrome(options=options)
+        driver = webdriver.Chrome(options=_build_chrome_options())
     except WebDriverException as err:
         message = str(err).lower()
         if "user data directory is already in use" in message or "profile is in use" in message:
@@ -108,11 +139,6 @@ def _create_driver(*, headless_mode: bool) -> webdriver.Chrome:
         raise
 
     driver.set_page_load_timeout(60)
-    _prepare_driver(driver)
-    return driver
-
-
-def _prepare_driver(driver: webdriver.Chrome) -> None:
     driver.execute_cdp_cmd(
         "Page.addScriptToEvaluateOnNewDocument",
         {
@@ -121,42 +147,11 @@ def _prepare_driver(driver: webdriver.Chrome) -> None:
             )
         },
     )
+    return driver
 
 
 def _body_text(driver: webdriver.Chrome) -> str:
     return driver.find_element(By.TAG_NAME, "body").text.lower()
-
-
-def _page_title(driver: webdriver.Chrome) -> str:
-    return (driver.title or "").lower()
-
-
-def _is_verification_pending(driver: webdriver.Chrome) -> bool:
-    body = _body_text(driver)
-    title = _page_title(driver)
-    url = driver.current_url.lower()
-    return (
-        "please wait for verification" in body
-        or "please wait for verification" in title
-        or _is_reddit_challenge(url)
-    )
-
-
-def _wait_for_reddit_ready(driver: webdriver.Chrome, *, timeout_secs: int = 90) -> None:
-    """Wait until Reddit finishes bot/JS verification pages."""
-    deadline = time.time() + timeout_secs
-    while time.time() < deadline:
-        if not _is_verification_pending(driver) and not _is_blocked(driver):
-            return
-        time.sleep(2)
-    raise RuntimeError(
-        "Reddit verification did not finish. Check REDDIT_USERNAME / REDDIT_PASSWORD and retry."
-    )
-
-
-def _navigate(driver: webdriver.Chrome, url: str) -> None:
-    driver.get(url)
-    _wait_for_reddit_ready(driver)
 
 
 def _is_blocked(driver: webdriver.Chrome) -> bool:
@@ -197,7 +192,51 @@ def _find_in_shadow_roots(
     return None
 
 
+def _deep_query_selector(driver: webdriver.Chrome, selector: str) -> WebElement | None:
+    return driver.execute_script(
+        """
+        function deepQuery(root, selector) {
+            const direct = root.querySelector(selector);
+            if (direct) return direct;
+            for (const host of root.querySelectorAll('*')) {
+                if (!host.shadowRoot) continue;
+                const found = deepQuery(host.shadowRoot, selector);
+                if (found) return found;
+            }
+            return null;
+        }
+        return deepQuery(document, arguments[0]);
+        """,
+        selector,
+    )
+
+
+def _wait_for_page(driver: webdriver.Chrome, *, timeout_secs: int = 30) -> None:
+    deadline = time.time() + timeout_secs
+    while time.time() < deadline:
+        if _is_blocked(driver):
+            raise RuntimeError("Reddit blocked this browser session")
+        body = _body_text(driver)
+        title = (driver.title or "").lower()
+        url = driver.current_url.lower()
+        if "please wait for verification" not in body and "please wait for verification" not in title:
+            if not _is_reddit_challenge(url):
+                return
+        time.sleep(2)
+
+
+def _navigate(driver: webdriver.Chrome, url: str) -> None:
+    driver.get(url)
+    _wait_for_page(driver)
+
+
 def _find_username_field(driver: webdriver.Chrome) -> WebElement | None:
+    if use_old_ui():
+        return _find_first(
+            driver,
+            ['input#user_login', 'input[name="user"]', 'input[name="username"]'],
+        )
+
     direct = _find_first(
         driver,
         [
@@ -220,6 +259,12 @@ def _find_username_field(driver: webdriver.Chrome) -> WebElement | None:
 
 
 def _find_password_field(driver: webdriver.Chrome) -> WebElement | None:
+    if use_old_ui():
+        return _find_first(
+            driver,
+            ['input#passwd', 'input[name="passwd"]', 'input[type="password"]'],
+        )
+
     direct = _find_first(
         driver,
         [
@@ -242,13 +287,23 @@ def _find_password_field(driver: webdriver.Chrome) -> WebElement | None:
 
 
 def _find_login_button(driver: webdriver.Chrome) -> WebElement | None:
-    button = _find_first(
-        driver,
-        [
-            'button[type="submit"]',
-            'faceplate-button[type="submit"]',
-        ],
-    )
+    if use_old_ui():
+        button = _find_first(
+            driver,
+            [
+                'form#login_login-main button[type="submit"]',
+                'form.login-form button[type="submit"]',
+                'button[type="submit"]',
+            ],
+        )
+        if button:
+            return button
+        try:
+            return driver.find_element(By.XPATH, "//button[contains(., 'log in')]")
+        except Exception:
+            return None
+
+    button = _find_first(driver, ['button[type="submit"]', 'faceplate-button[type="submit"]'])
     if button:
         return button
     try:
@@ -277,76 +332,78 @@ def _login_form_visible(driver: webdriver.Chrome) -> bool:
 
 
 def _session_is_active(driver: webdriver.Chrome) -> bool:
-    """
-    Return True when Reddit looks logged in.
-
-    If /login redirects to home (saved session), there is no login form and the
-    URL no longer contains /login — treat that as logged in.
-    """
-    if _is_blocked(driver) or _is_verification_pending(driver):
+    """Check logged-in UI on the current page only (no navigation)."""
+    if _is_blocked(driver):
         return False
     if _login_form_visible(driver):
         return False
 
-    if _find_first(
+    if use_old_ui():
+        return _find_first(
+            driver,
+            [
+                '#header-bottom-right a[href*="logout"]',
+                ".user a.logout",
+                "span.user",
+            ],
+        ) is not None
+
+    return _find_first(
         driver,
         [
             "#expand-user-drawer-button",
             'button[id="expand-user-drawer-button"]',
             '[data-testid="user-drawer-button"]',
             'faceplate-tracker[noun="avatar"]',
-            "#header .user",
-            "form.logout",
-            'a[href*="/logout"]',
         ],
-    ):
-        return True
-
-    current_url = driver.current_url.lower()
-    if "old.reddit.com" in current_url:
-        return _find_first(driver, ["#header .user", "form.logout"]) is not None
-
-    # /login -> home redirect with no login form means session is already active
-    if "reddit.com" in current_url and "/login" not in current_url.split("?")[0]:
-        return True
-
-    return False
+    ) is not None
 
 
-def _has_logged_in_ui(driver: webdriver.Chrome) -> bool:
-    return _session_is_active(driver)
+def _verify_login(driver: webdriver.Chrome) -> bool:
+    """
+    Reliable login check: settings/prefs redirects to login when logged out.
+    """
+    driver.get(reddit_settings_url())
+    time.sleep(2)
+    _wait_for_page(driver, timeout_secs=20)
+
+    url = driver.current_url.lower()
+    if "login" in url or _login_form_visible(driver):
+        return False
+    if _is_blocked(driver):
+        return False
+    return True
+
+
+def _login_page_settled(driver: webdriver.Chrome) -> str | None:
+    """
+    On the login page, detect whether credentials are needed or session redirected.
+    Returns: "form", "active", or None if still loading.
+    """
+    if _login_form_visible(driver):
+        return "form"
+
+    url = driver.current_url.lower()
+    if "reddit.com" in url and "/login" not in url.split("?")[0]:
+        return "active"
+    return None
 
 
 def _wait_for_login_redirect_or_form(driver: webdriver.Chrome) -> str:
-    """
-    After opening /login, wait until either:
-    - session redirect completes (logged in), or
-    - login form appears (need credentials)
-    Returns: "active" | "form"
-    """
     deadline = time.time() + 20
     while time.time() < deadline:
-        _wait_for_reddit_ready(driver, timeout_secs=5)
-        if _session_is_active(driver):
-            return "active"
-        if _login_form_visible(driver):
-            return "form"
+        _wait_for_page(driver, timeout_secs=5)
+        state = _login_page_settled(driver)
+        if state:
+            return state
         time.sleep(1)
-    if _session_is_active(driver):
-        return "active"
-    if _login_form_visible(driver):
-        return "form"
+
+    state = _login_page_settled(driver)
+    if state:
+        return state
     raise RuntimeError(
-        "Reddit login page did not settle. Session may be invalid — "
-        "delete .reddit_browser_session and retry."
+        "Reddit login page did not settle. The browser session may be stale."
     )
-
-
-def is_logged_in(driver: webdriver.Chrome) -> bool:
-    """Check session by opening the login page."""
-    _navigate(driver, REDDIT_LOGIN_URL)
-    time.sleep(2)
-    return _session_is_active(driver)
 
 
 def login_with_password(driver: webdriver.Chrome) -> None:
@@ -354,20 +411,27 @@ def login_with_password(driver: webdriver.Chrome) -> None:
     if not username or not password:
         raise RuntimeError("Set REDDIT_USERNAME and REDDIT_PASSWORD in .env")
 
-    print(f"  opening {REDDIT_LOGIN_URL} for automated login...")
-    _navigate(driver, REDDIT_LOGIN_URL)
+    if _verify_login(driver):
+        print("  reddit session already active")
+        return
+
+    print(f"  opening {reddit_login_url()} for automated login...")
+    _navigate(driver, reddit_login_url())
     if _is_blocked(driver):
         raise RuntimeError("Reddit blocked the automated browser session")
 
     state = _wait_for_login_redirect_or_form(driver)
     if state == "active":
-        print("  reddit session already active")
-        return
+        if _verify_login(driver):
+            print("  reddit session already active")
+            return
+        print("  login redirect did not create a session, retrying login form...")
+        _navigate(driver, reddit_login_url())
 
     username_el = _find_username_field(driver)
     password_el = _find_password_field(driver)
     if not username_el or not password_el:
-        raise RuntimeError(f"Could not find login fields at {REDDIT_LOGIN_URL}")
+        raise RuntimeError(f"Could not find login fields at {reddit_login_url()}")
 
     print("  submitting credentials...")
     _type_into_field(username_el, username)
@@ -380,62 +444,99 @@ def login_with_password(driver: webdriver.Chrome) -> None:
         raise RuntimeError("Could not find Reddit Log In button")
     login_button.click()
 
-    deadline = time.time() + 30
+    deadline = time.time() + 45
     while time.time() < deadline:
         time.sleep(2)
-        _wait_for_reddit_ready(driver, timeout_secs=5)
-        if _session_is_active(driver):
+        if _verify_login(driver):
             print("  login successful")
             return
 
     raise RuntimeError(
-        "Reddit login failed using REDDIT_USERNAME / REDDIT_PASSWORD. "
-        "Check credentials, 2FA, or captcha requirements."
+        "Reddit login failed. Check REDDIT_USERNAME / REDDIT_PASSWORD, 2FA, or captcha."
     )
 
 
 def ensure_logged_in(driver: webdriver.Chrome) -> None:
+    ui = "old.reddit.com" if use_old_ui() else "www.reddit.com"
+    print(f"  ensuring reddit login ({ui})...")
     login_with_password(driver)
+    if not _verify_login(driver):
+        raise RuntimeError(
+            "Reddit login verification failed. Check credentials or complete captcha in Chrome."
+        )
+    print("  reddit login verified")
 
 
-def _assert_logged_in_on_post(driver: webdriver.Chrome) -> None:
+def _assert_logged_in_on_post(driver: webdriver.Chrome) -> bool:
+    if _session_is_active(driver):
+        return True
     body = _body_text(driver)
-    if "log in to leave a comment" in body or "you must log in" in body:
-        raise RuntimeError("Not logged in on the post page")
-    for link in driver.find_elements(By.XPATH, "//a[contains(., 'Log In')]"):
-        if link.is_displayed():
-            raise RuntimeError("Not logged in on the post page")
+    if any(
+        phrase in body
+        for phrase in (
+            "log in to leave a comment",
+            "you must log in",
+            "log in to comment",
+            "sign in to comment",
+            "log in to add a comment",
+        )
+    ):
+        return False
+    return _verify_login(driver)
 
 
 def _post_is_locked(driver: webdriver.Chrome) -> bool:
     body = _body_text(driver)
-    return (
-        "archived" in body and "comment" in body
-    ) or "locked" in body and "comments are locked" in body
-
-
-def _deep_query_selector(driver: webdriver.Chrome, selector: str) -> WebElement | None:
-    """Search through nested shadow roots for an element."""
-    element = driver.execute_script(
-        """
-        function deepQuery(root, selector) {
-            const direct = root.querySelector(selector);
-            if (direct) return direct;
-            for (const host of root.querySelectorAll('*')) {
-                if (!host.shadowRoot) continue;
-                const found = deepQuery(host.shadowRoot, selector);
-                if (found) return found;
-            }
-            return null;
-        }
-        return deepQuery(document, arguments[0]);
-        """,
-        selector,
+    locked_phrases = (
+        "archived and can no longer be commented on",
+        "this post is archived",
+        "comments are locked",
+        "commenting is locked",
+        "you cannot comment on this post",
+        "commenting is disabled",
+        "locked by the moderators",
     )
-    return element
+    return any(phrase in body for phrase in locked_phrases)
 
 
-def _find_comment_composer_new_reddit(driver: webdriver.Chrome) -> WebElement:
+def _safe_focus(driver: webdriver.Chrome, element: WebElement) -> None:
+    driver.execute_script(
+        "arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", element
+    )
+    time.sleep(0.3)
+    try:
+        WebDriverWait(driver, 5).until(EC.element_to_be_clickable(element))
+        ActionChains(driver).move_to_element(element).pause(0.2).click(element).perform()
+        return
+    except Exception:
+        pass
+    driver.execute_script(
+        """
+        const el = arguments[0];
+        el.focus();
+        el.click();
+        """,
+        element,
+    )
+
+
+def _find_comment_composer_old(driver: webdriver.Chrome) -> WebElement:
+    selectors = [
+        "form.usertext-edit textarea[name='text']",
+        "div.commentarea form textarea[name='text']",
+        "textarea[name='text']",
+    ]
+    for selector in selectors:
+        for candidate in driver.find_elements(By.CSS_SELECTOR, selector):
+            try:
+                if candidate.is_displayed() and candidate.is_enabled():
+                    return candidate
+            except Exception:
+                continue
+    raise RuntimeError("Comment box not found on old.reddit.com")
+
+
+def _find_comment_composer_new(driver: webdriver.Chrome) -> WebElement:
     composer_selectors = [
         'textarea[placeholder="Join the conversation"]',
         'textarea[name="body"]',
@@ -443,7 +544,7 @@ def _find_comment_composer_new_reddit(driver: webdriver.Chrome) -> WebElement:
         'div[contenteditable="true"][role="textbox"]',
     ]
 
-    for scroll_y in (0, 500, 900, 1300):
+    for scroll_y in (0, 400, 800, 1200):
         driver.execute_script(f"window.scrollTo(0, {scroll_y});")
         time.sleep(2)
 
@@ -451,12 +552,11 @@ def _find_comment_composer_new_reddit(driver: webdriver.Chrome) -> WebElement:
             candidate = _deep_query_selector(driver, selector)
             if candidate:
                 try:
-                    if candidate.is_displayed():
-                        driver.execute_script(
-                            "arguments[0].scrollIntoView({block: 'center'});", candidate
-                        )
-                        time.sleep(0.5)
-                        return candidate
+                    driver.execute_script(
+                        "arguments[0].scrollIntoView({block: 'center'});", candidate
+                    )
+                    time.sleep(0.5)
+                    return candidate
                 except Exception:
                     continue
 
@@ -471,69 +571,73 @@ def _find_comment_composer_new_reddit(driver: webdriver.Chrome) -> WebElement:
                 except Exception:
                     continue
 
-    raise RuntimeError("Comment box not found on new Reddit UI")
+    raise RuntimeError("Comment box not found on www.reddit.com")
 
 
-def _find_comment_composer_old_reddit(driver: webdriver.Chrome) -> WebElement:
-    selectors = [
-        'form.usertext.cloneable textarea[name="text"]',
-        'div.commentarea textarea[name="text"]',
-        'div.usertext-edit textarea',
-        'textarea[name="text"]',
-    ]
-    deadline = time.time() + 20
-    while time.time() < deadline:
-        for selector in selectors:
-            for candidate in driver.find_elements(By.CSS_SELECTOR, selector):
-                try:
-                    if candidate.is_displayed() and candidate.is_enabled():
-                        driver.execute_script(
-                            "arguments[0].scrollIntoView({block: 'center'});", candidate
-                        )
-                        time.sleep(0.5)
-                        return candidate
-                except Exception:
-                    continue
-        time.sleep(1)
+def _find_comment_composer(driver: webdriver.Chrome) -> WebElement:
+    if not _assert_logged_in_on_post(driver):
+        print("  not logged in on post page, logging in again...")
+        login_with_password(driver)
+        _navigate(driver, driver.current_url)
+        time.sleep(2)
+        if not _assert_logged_in_on_post(driver):
+            raise RuntimeError("Not logged in on the post page after login attempt")
 
-    raise RuntimeError("Comment box not found on old.reddit.com")
-
-
-def _find_comment_composer(driver: webdriver.Chrome, *, use_old_ui: bool) -> WebElement:
-    _assert_logged_in_on_post(driver)
     if _post_is_locked(driver):
         raise RuntimeError("Post is archived or locked — comments are disabled")
 
-    if use_old_ui:
-        return _find_comment_composer_old_reddit(driver)
-    try:
-        return _find_comment_composer_new_reddit(driver)
-    except RuntimeError:
-        print("  new Reddit comment box not found, trying old.reddit.com...")
-        old_url = to_old_reddit(driver.current_url)
-        _navigate(driver, old_url)
-        time.sleep(2)
-        return _find_comment_composer_old_reddit(driver)
+    if use_old_ui():
+        return _find_comment_composer_old(driver)
+    return _find_comment_composer_new(driver)
 
 
-def _type_comment(driver: webdriver.Chrome, composer: WebElement, text: str) -> None:
-    composer.click()
-    time.sleep(0.5)
-    select_all = _select_all_key()
-    composer.send_keys(select_all, "a")
-    composer.send_keys(Keys.BACKSPACE)
-    for char in text:
-        composer.send_keys(char)
-        time.sleep(0.02)
-    time.sleep(1)
+def _set_composer_text(driver: webdriver.Chrome, composer: WebElement, text: str) -> None:
+    tag = (composer.tag_name or "").lower()
+    is_textarea = tag == "textarea" or composer.get_attribute("name") in ("text", "body")
 
-    typed = (composer.get_attribute("value") or "").strip()
-    if not typed:
+    _safe_focus(driver, composer)
+    time.sleep(0.4)
+
+    if is_textarea:
+        try:
+            select_all = _select_all_key()
+            composer.send_keys(select_all, "a")
+            composer.send_keys(Keys.BACKSPACE)
+            composer.send_keys(text)
+        except Exception:
+            driver.execute_script(
+                """
+                const el = arguments[0];
+                const value = arguments[1];
+                el.value = value;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                """,
+                composer,
+                text,
+            )
+    else:
         driver.execute_script(
             """
             const el = arguments[0];
             const value = arguments[1];
-            el.value = value;
+            el.textContent = value;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            """,
+            composer,
+            text,
+        )
+
+    time.sleep(0.5)
+    typed = (composer.get_attribute("value") or composer.text or "").strip()
+    if len(typed) < max(1, len(text.strip()) // 2):
+        driver.execute_script(
+            """
+            const el = arguments[0];
+            const value = arguments[1];
+            if ('value' in el) el.value = value;
+            else el.textContent = value;
             el.dispatchEvent(new Event('input', { bubbles: true }));
             el.dispatchEvent(new Event('change', { bubbles: true }));
             """,
@@ -543,42 +647,48 @@ def _type_comment(driver: webdriver.Chrome, composer: WebElement, text: str) -> 
         time.sleep(0.5)
 
 
-def _click_submit_old_reddit(driver: webdriver.Chrome) -> None:
+def _type_comment(driver: webdriver.Chrome, composer: WebElement, text: str) -> None:
+    _set_composer_text(driver, composer, text)
+    time.sleep(1)
+
+
+def _click_submit_old(driver: webdriver.Chrome) -> None:
     selectors = [
-        'form.usertext.cloneable button[type="submit"]',
-        'div.usertext-buttons button[type="submit"]',
-        'button.save',
+        "form.usertext-edit button[type='submit']",
+        "div.commentarea form button[type='submit']",
     ]
     for selector in selectors:
-        try:
-            button = WebDriverWait(driver, 8).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
-            )
-            if button.is_enabled():
-                driver.execute_script(
-                    "arguments[0].scrollIntoView({block: 'center'});", button
-                )
+        for button in driver.find_elements(By.CSS_SELECTOR, selector):
+            try:
+                if not button.is_displayed() or not button.is_enabled():
+                    continue
+                label = (button.text or button.get_attribute("value") or "").strip().lower()
+                if label and label not in ("save", "comment", "reply"):
+                    continue
+                _safe_focus(driver, button)
                 button.click()
-                time.sleep(5)
+                time.sleep(4)
                 return
-        except TimeoutException:
-            continue
+            except Exception:
+                continue
+
+    for button in driver.find_elements(By.XPATH, "//button[@type='submit']"):
+        try:
+            if not button.is_displayed() or not button.is_enabled():
+                continue
+            label = (button.text or button.get_attribute("value") or "").strip().lower()
+            if label in ("save", "comment", "reply", ""):
+                _safe_focus(driver, button)
+                button.click()
+                time.sleep(4)
+                return
         except Exception:
             continue
 
-    for button in driver.find_elements(By.XPATH, "//button[contains(translate(., 'SAVE', 'save'), 'save')]"):
-        if button.is_displayed() and button.is_enabled():
-            button.click()
-            time.sleep(5)
-            return
-
-    raise RuntimeError("Comment submit button not found on old.reddit.com")
+    raise RuntimeError("Comment submit button not found or not enabled on old.reddit.com")
 
 
-def _click_submit(driver: webdriver.Chrome, *, use_old_ui: bool) -> None:
-    if use_old_ui or "old.reddit.com" in driver.current_url.lower():
-        _click_submit_old_reddit(driver)
-        return
+def _click_submit_new(driver: webdriver.Chrome) -> None:
     time.sleep(1.5)
 
     selectors = [
@@ -587,14 +697,23 @@ def _click_submit(driver: webdriver.Chrome, *, use_old_ui: bool) -> None:
         "button[slot='submit-button']",
     ]
     for selector in selectors:
+        button = _deep_query_selector(driver, selector)
+        if button:
+            try:
+                if button.is_enabled() and "comment" in (button.text or "").lower():
+                    _safe_focus(driver, button)
+                    button.click()
+                    time.sleep(5)
+                    return
+            except Exception:
+                continue
+
         try:
             button = WebDriverWait(driver, 8).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
             )
             if button.is_enabled() and "comment" in button.text.lower():
-                driver.execute_script(
-                    "arguments[0].scrollIntoView({block: 'center'});", button
-                )
+                _safe_focus(driver, button)
                 button.click()
                 time.sleep(5)
                 return
@@ -613,9 +732,7 @@ def _click_submit(driver: webdriver.Chrome, *, use_old_ui: bool) -> None:
             location = button.location
             size = button.size
             if size.get("width", 0) >= 60 and location.get("y", 9999) < 900:
-                driver.execute_script(
-                    "arguments[0].scrollIntoView({block: 'center'});", button
-                )
+                _safe_focus(driver, button)
                 button.click()
                 time.sleep(5)
                 return
@@ -625,24 +742,62 @@ def _click_submit(driver: webdriver.Chrome, *, use_old_ui: bool) -> None:
     raise RuntimeError("Comment submit button not found or not enabled")
 
 
+def _click_submit(driver: webdriver.Chrome) -> None:
+    if use_old_ui():
+        _click_submit_old(driver)
+    else:
+        _click_submit_new(driver)
+
+
+def _comment_snippet(text: str, length: int = 80) -> str:
+    cleaned = " ".join(text.strip().split())
+    return cleaned[:length].lower()
+
+
+def _verify_comment_published(driver: webdriver.Chrome, text: str) -> bool:
+    snippet = _comment_snippet(text)
+    if not snippet:
+        return False
+
+    deadline = time.time() + 20
+    while time.time() < deadline:
+        body = _body_text(driver)
+        if snippet in body:
+            return True
+        time.sleep(2)
+        try:
+            driver.refresh()
+            _wait_for_page(driver, timeout_secs=20)
+        except Exception:
+            time.sleep(2)
+    return False
+
+
 def automated_login() -> None:
     """Log into Reddit with REDDIT_USERNAME / REDDIT_PASSWORD and save the session."""
-    driver = _create_driver(headless_mode=False)
+    driver = _create_driver()
     try:
-        login_with_password(driver)
+        try:
+            login_with_password(driver)
+        except RuntimeError as err:
+            driver.quit()
+            if _should_auto_clear_session(err):
+                clear_browser_session()
+                print("  retrying login with a fresh browser session...")
+                driver = _create_driver()
+                login_with_password(driver)
+            else:
+                raise
         print(f"Session saved in {session_dir()}")
     finally:
         driver.quit()
 
 
 class BrowserPoster:
-    """Reuse one browser session for multiple comment posts."""
+    """Reuse one browser session for multiple comment posts on www.reddit.com."""
 
     def __init__(self) -> None:
         self._driver: webdriver.Chrome | None = None
-
-    def _open_driver(self, *, headless_mode: bool) -> None:
-        self._driver = _create_driver(headless_mode=headless_mode)
 
     def _close_driver(self) -> None:
         if self._driver:
@@ -652,48 +807,59 @@ class BrowserPoster:
                 pass
             self._driver = None
 
-    def __enter__(self) -> "BrowserPoster":
-        self._open_driver(headless_mode=False)
+    def _start_with_login(self) -> None:
+        self._driver = _create_driver()
         ensure_logged_in(self._driver)
+
+    def __enter__(self) -> "BrowserPoster":
+        try:
+            self._start_with_login()
+        except RuntimeError as err:
+            self._close_driver()
+            if _should_auto_clear_session(err):
+                clear_browser_session()
+                print("  retrying login with a fresh browser session...")
+                self._start_with_login()
+            else:
+                raise
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self._close_driver()
 
-    def _open_post(self, post_url: str) -> tuple[str, bool]:
-        use_old_ui = use_old_reddit_for_comments()
-        reddit_url = to_old_reddit(post_url) if use_old_ui else to_reddit(post_url)
-        ui_label = "old.reddit.com" if use_old_ui else "www.reddit.com"
-        print(f"  opening post on {ui_label}: {reddit_url}")
+    def _open_post(self, post_url: str) -> str:
+        reddit_url = to_reddit(post_url)
+        print(f"  opening post: {reddit_url}")
         _navigate(self._driver, reddit_url)
         time.sleep(3)
-        return reddit_url, use_old_ui
+        return reddit_url
 
     def verify_post(self, post_url: str) -> None:
-        """Login and confirm the comment box is available on a post."""
         assert self._driver is not None
-
-        _, use_old_ui = self._open_post(post_url)
-
+        self._open_post(post_url)
         if _is_blocked(self._driver):
             raise RuntimeError("Reddit blocked this browser session")
-
-        _find_comment_composer(self._driver, use_old_ui=use_old_ui)
+        _find_comment_composer(self._driver)
         print("  comment box found")
 
     def post(self, post_url: str, text: str) -> dict:
         driver = self._driver
         assert driver is not None
 
-        reddit_url, use_old_ui = self._open_post(post_url)
-
+        reddit_url = self._open_post(post_url)
         if _is_blocked(driver):
             raise RuntimeError("Reddit blocked this browser session")
 
-        composer = _find_comment_composer(driver, use_old_ui=use_old_ui)
+        composer = _find_comment_composer(driver)
         _type_comment(driver, composer, text)
-        _click_submit(driver, use_old_ui=use_old_ui)
+        _click_submit(driver)
 
+        if not _verify_comment_published(driver, text):
+            raise RuntimeError(
+                "Comment submit finished but the comment text was not found on the page"
+            )
+
+        print("  comment verified on page")
         return {
             "reddit_comment_id": "browser",
             "reddit_comment_url": reddit_url,

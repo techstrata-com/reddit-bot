@@ -11,7 +11,7 @@ import sys
 
 from dotenv import load_dotenv
 
-from reddit_browser_poster import BrowserPoster
+from reddit_browser_poster import BrowserPoster, use_old_ui
 from reddit_poster import post_comment_safe
 
 POST_URL = (
@@ -27,7 +27,9 @@ COMMENT_TEXT = (
 
 
 def run_dry_run() -> int:
+    ui = "old.reddit.com" if use_old_ui() else "www.reddit.com"
     print(f"Post URL: {POST_URL}")
+    print(f"Reddit UI: {ui}")
     print("Mode: dry-run (login + comment box check, no posting)")
     try:
         with BrowserPoster() as browser:
@@ -40,7 +42,9 @@ def run_dry_run() -> int:
 
 
 def run_post() -> int:
+    ui = "old.reddit.com" if use_old_ui() else "www.reddit.com"
     print(f"Post URL: {POST_URL}")
+    print(f"Reddit UI: {ui}")
     print(f"Comment ({len(COMMENT_TEXT)} chars):")
     print("-" * 40)
     print(COMMENT_TEXT)
