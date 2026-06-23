@@ -20,9 +20,8 @@ from schedule_loader import (
     get_groups_for_day,
     subreddit_context_for_post,
 )
-from reddit_browser_poster import BrowserPoster
-from reddit_poster import post_comment_safe, post_delay_secs, reddit_login
 from scraper import scrape_subreddit
+from telegram_notifier import chat_id_for_group, reddit_username, send_delay_secs, send_handoff
 from select_posts import select_top_posts
 
 load_dotenv(override=True)
@@ -155,23 +154,27 @@ def process_group_comments_only(
     print(f"  Phase 3 complete: {count} comments saved to comments collection")
 
 
-def process_group_post_comments(
+def process_group_send_telegram(
     repo: PipelineRepository,
     pipeline_run_id: str,
-    run_key: str,
     group: Group,
     *,
     dry_run: bool = False,
 ) -> None:
-    comments = repo.get_unpublished_comments(pipeline_run_id, group.id)
+    comments = repo.get_unsent_comments(pipeline_run_id, group.id)
     if not comments:
         print(f"  no pending comments for group {group.id}")
         return
 
-    delay = post_delay_secs()
-    posted = 0
+    try:
+        chat_id = chat_id_for_group(group.id)
+    except ValueError as err:
+        raise ValueError(f"Group {group.id}: {err}") from err
+
+    delay = send_delay_secs()
+    sent = 0
     failed = 0
-    pending: list[tuple[int, str, str, str]] = []
+    pending: list[tuple[int, str, str, str, str, str]] = []
 
     for i, doc in enumerate(comments, start=1):
         post_url = doc.get("post_url")
@@ -193,43 +196,43 @@ def process_group_post_comments(
 
         if dry_run:
             print(f"  [{i}/{len(comments)}] r/{doc.get('subreddit_name')} - {title}...")
-            print(f"    (dry-run) would post {len(text)} chars to {post_url}")
+            print(f"    (dry-run) would send to Telegram chat {chat_id}")
+            print(f"    comment ({len(text)} chars) + URL: {post_url}")
             continue
 
         pending.append((i, comment_id, post_url, text, doc.get("subreddit_name"), title))
 
     if dry_run or not pending:
-        print(f"  Phase 4 complete: {posted} posted, {failed} failed")
+        print(f"  Phase 4 complete: {sent} sent, {failed} failed")
         return
 
-    repo.set_run_phase(pipeline_run_id, f"posting_group_{group.id}")
-    print(f"  posting {len(pending)} comment(s) via Selenium browser...")
+    repo.set_run_phase(pipeline_run_id, f"telegram_group_{group.id}")
+    print(f"  sending {len(pending)} comment(s) to Telegram (chat {chat_id})...")
 
-    def handle_result(comment_id: str, result: dict) -> None:
-        nonlocal posted, failed
+    for idx, (i, comment_id, post_url, text, subreddit, title) in enumerate(pending):
+        print(f"  [{i}/{len(comments)}] r/{subreddit} - {title}...")
+        result = send_handoff(
+            chat_id, text, post_url, comment_id, reddit_user=reddit_username()
+        )
         if result["ok"]:
-            repo.mark_comment_posted(
+            repo.mark_comment_sent(
                 comment_id,
-                reddit_comment_id=result["reddit_comment_id"],
-                reddit_comment_url=result["reddit_comment_url"],
+                telegram_message_id=result["telegram_message_id"],
+                telegram_chat_id=result["telegram_chat_id"],
+                reddit_username=reddit_username(),
             )
-            posted += 1
-            print(f"    OK posted -> {result['reddit_comment_url']}")
+            sent += 1
+            print(f"    OK sent (message_id={result['telegram_message_id']})")
         else:
             repo.mark_comment_failed(comment_id, result["error"])
             failed += 1
             print(f"    ERROR {result['error']}")
 
-    with BrowserPoster() as browser:
-        for idx, (i, comment_id, post_url, text, subreddit, title) in enumerate(pending):
-            print(f"  [{i}/{len(comments)}] r/{subreddit} - {title}...")
-            result = post_comment_safe(post_url, text, browser=browser)
-            handle_result(comment_id, result)
-            if idx < len(pending) - 1:
-                print(f"    waiting {delay}s before next post...")
-                time.sleep(delay)
+        if idx < len(pending) - 1 and delay > 0:
+            print(f"    waiting {delay}s before next message...")
+            time.sleep(delay)
 
-    print(f"  Phase 4 complete: {posted} posted, {failed} failed")
+    print(f"  Phase 4 complete: {sent} sent, {failed} failed")
 
 
 def process_group(
@@ -245,7 +248,7 @@ def process_group(
     base_config: dict,
     skip_comments: bool,
     post_comments: bool = False,
-    dry_run_post: bool = False,
+    dry_run_telegram: bool = False,
 ) -> None:
     group_run_id = repo.create_group_run(
         pipeline_run_id,
@@ -320,13 +323,12 @@ def process_group(
         repo.finish_group_run(group_run_id, raw_count=total_saved, selected_count=selected_count)
 
         if post_comments:
-            print(f"\n  --- Phase 4: post comments ---")
-            process_group_post_comments(
+            print(f"\n  --- Phase 4: send to Telegram ---")
+            process_group_send_telegram(
                 repo,
                 pipeline_run_id,
-                run_key,
                 group,
-                dry_run=dry_run_post,
+                dry_run=dry_run_telegram,
             )
 
     except Exception as err:
@@ -351,20 +353,15 @@ def main() -> None:
     parser.add_argument("top_n", type=int, nargs="?", default=3, help="Top posts per group (default: 3)")
     parser.add_argument("--skip-comments", action="store_true", help="Stop after scrape + select")
     parser.add_argument("--comments-only", action="store_true", help="Generate comments from existing selected_posts")
-    parser.add_argument("--post-comments", action="store_true", help="Also post comments to Reddit (Phase 4)")
+    parser.add_argument("--send-telegram", action="store_true", help="Also send comments to Telegram (Phase 4)")
     parser.add_argument(
-        "--reddit-login",
+        "--dry-run",
         action="store_true",
-        help="Log into Reddit with REDDIT_USERNAME / REDDIT_PASSWORD (saves session)",
+        help="With --send-telegram: show what would be sent without sending",
     )
-    parser.add_argument("--dry-run", action="store_true", help="With --post-comments: show what would be posted without posting")
     parser.add_argument("--resume", metavar="RUN_KEY", help="Resume an existing run (e.g. 20260608_122706)")
     parser.add_argument("--group", action="append", dest="groups", help="Process only specific group(s), e.g. --group A")
     args = parser.parse_args()
-
-    if args.reddit_login:
-        reddit_login()
-        return
 
     if not ssh_enabled() and not os.getenv("MONGODB_URI"):
         raise ValueError("Set MONGODB_URI or enable MONGODB_SSH_ENABLED in .env")
@@ -407,7 +404,7 @@ def main() -> None:
             config_snapshot=base_config,
         )
 
-    if args.post_comments and args.resume and not args.comments_only:
+    if args.send_telegram and args.resume and not args.comments_only:
         if not groups:
             group_ids_in_db = repo.comments.distinct("group_id", {"run_key": run_key})
             groups = [all_groups_map[gid] for gid in group_ids_in_db if gid in all_groups_map]
@@ -417,17 +414,16 @@ def main() -> None:
             raise ValueError("No groups to process")
 
         mode = "dry-run" if args.dry_run else "live"
-        print(f"Post comments only ({mode}) - groups: {[g.id for g in groups]}")
+        print(f"Send to Telegram only ({mode}) - groups: {[g.id for g in groups]}")
 
         try:
             for group in groups:
                 print(f"\n{'='*50}")
-                print(f"GROUP [{group.id}] {group.title} - post comments")
+                print(f"GROUP [{group.id}] {group.title} - send to Telegram")
                 print(f"{'='*50}")
-                process_group_post_comments(
+                process_group_send_telegram(
                     repo,
                     pipeline_run_id,
-                    run_key,
                     group,
                     dry_run=args.dry_run,
                 )
@@ -436,8 +432,8 @@ def main() -> None:
             close_connection()
         return
 
-    if args.post_comments and args.skip_comments:
-        raise ValueError("--post-comments cannot be used with --skip-comments")
+    if args.send_telegram and args.skip_comments:
+        raise ValueError("--send-telegram cannot be used with --skip-comments")
 
     if args.comments_only:
         if not groups:
@@ -473,8 +469,8 @@ def main() -> None:
     phases = "scrape -> select"
     if not args.skip_comments:
         phases += " -> generate"
-        if args.post_comments:
-            phases += " -> post"
+        if args.send_telegram:
+            phases += " -> telegram"
     print(f"Day {args.day} ({day_name}) - groups {[g.id for g in groups]} - top {args.top_n}/group")
     print(f"Pipeline: {phases}")
     print(f"Run: {run_key}")
@@ -495,8 +491,8 @@ def main() -> None:
                 client=client,
                 base_config=base_config,
                 skip_comments=args.skip_comments,
-                post_comments=args.post_comments,
-                dry_run_post=args.dry_run,
+                post_comments=args.send_telegram,
+                dry_run_telegram=args.dry_run,
             )
 
         repo.finish_run(pipeline_run_id)

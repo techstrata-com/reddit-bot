@@ -59,7 +59,7 @@ def _start_ssh_tunnel() -> int:
 
     ssh_host = os.getenv("MONGODB_SSH_HOST", "mdstudio.oriele.ai")
     ssh_user = os.getenv("MONGODB_SSH_USER", "oriele")
-    ssh_key = os.getenv("MONGODB_SSH_KEY_PATH", "/Users/borhan/Desktop/keys/id_ed25519")
+    ssh_key = os.getenv("MONGODB_SSH_KEY_PATH", os.path.expanduser("~/.ssh/id_ed25519"))
     remote_host = os.getenv("MONGODB_SSH_REMOTE_HOST", "127.0.0.1")
     remote_port = os.getenv("MONGODB_SSH_REMOTE_PORT", "27017")
 

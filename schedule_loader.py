@@ -102,6 +102,11 @@ def get_day_plan(schedule_path: Path, day_number: int) -> tuple[str, list[str]]:
     return day_name, plan.get("groups", [])
 
 
+def mara_day_number_from_weekday(weekday: int) -> int:
+    """Map Python weekday (Mon=0 … Sun=6) to Mara day number (Sat=1 … Fri=7)."""
+    return (weekday + 2) % 7 + 1
+
+
 def get_groups_for_day(schedule_path: Path, day_number: int) -> tuple[str, list[Group]]:
     day_name, group_ids = get_day_plan(schedule_path, day_number)
 

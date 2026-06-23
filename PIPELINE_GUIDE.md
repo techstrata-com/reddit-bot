@@ -8,17 +8,14 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Google Chrome must be installed (Selenium uses your local Chrome browser).
+Fill in `.env` (API keys, MongoDB SSH, Telegram bot token + group chat IDs).
 
-Fill in `.env` (API keys, MongoDB SSH, Reddit username/password).
+Create a Telegram bot via [@BotFather](https://t.me/BotFather), add it to each handoff group, and map pipeline groups to chat IDs:
 
-Log into Reddit with credentials from `.env` (saves browser session):
-
-```bash
-python3 app.py 1 --reddit-login
+```env
+TELEGRAM_BOT_TOKEN=123456:ABC...
+TELEGRAM_CHAT_IDS={"A":"-1001234567890","H":"-1009876543210"}
 ```
-
-Requires `REDDIT_USERNAME` and `REDDIT_PASSWORD` in `.env`. Login is fully automated via Selenium.
 
 ---
 
@@ -42,7 +39,7 @@ Requires `REDDIT_USERNAME` and `REDDIT_PASSWORD` in `.env`. Login is fully autom
 Phase 1: Scrape subreddits (Apify)     → raw_posts
 Phase 2: Rank top N per group          → selected_posts
 Phase 3: Generate LLM comments         → comments
-Phase 4: Post comments to Reddit       → comments (publish_status updated)
+Phase 4: Send comments to Telegram   → comments (publish_status updated)
 ```
 
 Each run gets a unique `run_key` (e.g. `20260608_122706`). Use it with `--resume` to continue later.
@@ -51,7 +48,7 @@ Each run gets a unique `run_key` (e.g. `20260608_122706`). Use it with `--resume
 
 ## Run the entire pipeline
 
-Scrape + rank + generate comments + (optionally) post — all groups for a day:
+Scrape + rank + generate comments + (optionally) send to Telegram — all groups for a day:
 
 ```bash
 # Full run: scrape → select → generate comments (default top 3 per group)
@@ -64,10 +61,10 @@ python3 app.py 1 3 --skip-comments
 python3 app.py 1 3 --group A
 ```
 
-After a full run, post comments in a second step (needs saved Reddit session):
+After a full run, send comments in a second step:
 
 ```bash
-python3 app.py 1 --resume 20260608_122706 --post-comments
+python3 app.py 1 --resume 20260608_122706 --send-telegram
 ```
 
 ---
@@ -105,19 +102,19 @@ python3 app.py 1 --resume 20260608_122706 --group A --comments-only
 
 ---
 
-### Phase 4 — Post comments to Reddit
+### Phase 4 — Send comments to Telegram
 
-Uses existing `comments` from MongoDB. Updates `publish_status` in DB.
+Uses existing `comments` from MongoDB. Sends one Telegram message per comment to the chat configured for that pipeline group. Each message contains the generated comment text and the Reddit post URL.
 
 ```bash
-# Preview — nothing is posted, DB is not updated
-python3 app.py 1 --resume 20260608_122706 --group A --post-comments --dry-run
+# Preview — nothing is sent, DB is not updated
+python3 app.py 1 --resume 20260608_122706 --group A --send-telegram --dry-run
 
-# Actually post
-python3 app.py 1 --resume 20260608_122706 --group A --post-comments
+# Actually send
+python3 app.py 1 --resume 20260608_122706 --group A --send-telegram
 
 # All groups in that run
-python3 app.py 1 --resume 20260608_122706 --post-comments
+python3 app.py 1 --resume 20260608_122706 --send-telegram
 ```
 
 ---
@@ -126,12 +123,11 @@ python3 app.py 1 --resume 20260608_122706 --post-comments
 
 | Goal | Command |
 |------|---------|
-| Full pipeline (no posting) | `python3 app.py <day> <top_n>` |
+| Full pipeline (no Telegram) | `python3 app.py <day> <top_n>` |
 | Full pipeline, skip LLM | `python3 app.py <day> <top_n> --skip-comments` |
 | One group only | `python3 app.py <day> <top_n> --group A` |
 | Resume + comments only | `python3 app.py <day> --resume <RUN_KEY> --comments-only` |
-| Resume + post comments | `python3 app.py <day> --resume <RUN_KEY> --post-comments` |
-| Reddit login (once) | `python3 app.py 1 --reddit-login` |
+| Resume + send Telegram | `python3 app.py <day> --resume <RUN_KEY> --send-telegram` |
 
 ---
 
@@ -141,7 +137,7 @@ python3 app.py 1 --resume 20260608_122706 --post-comments
 |------------|----------------|
 | `raw_posts` | Every scraped post (per subreddit, group, run) |
 | `selected_posts` | Top N ranked posts per group |
-| `comments` | Generated comment text + publish status |
+| `comments` | Generated comment text + delivery status |
 | `pipeline_runs` | Run metadata (day, status, stats) |
 | `group_runs` | Per-group progress (scraping → selecting → done) |
 
@@ -153,17 +149,18 @@ db.raw_posts.find({ run_key: "20260608_122706" })
 db.selected_posts.find({ run_key: "20260608_122706" }).sort({ group_id: 1, rank: 1 })
 db.comments.find({ run_key: "20260608_122706" })
 
-// Posted comments only
-db.comments.find({ run_key: "20260608_122706", publish_status: "posted" })
+// Sent comments only
+db.comments.find({ run_key: "20260608_122706", publish_status: "sent" })
 ```
 
-### Comment publish fields (Phase 4)
+### Comment delivery fields (Phase 4)
 
 | Field | Values |
 |-------|--------|
-| `publish_status` | `pending` → `posted` or `failed` |
-| `published_at` | timestamp when posted or failed |
-| `reddit_comment_url` | link to the comment on Reddit |
+| `publish_status` | `pending` → `sent` or `failed` |
+| `published_at` | timestamp when sent or failed |
+| `telegram_message_id` | Telegram message ID |
+| `telegram_chat_id` | Telegram chat the message was sent to |
 | `publish_error` | error message if failed |
 
 ---
@@ -175,7 +172,7 @@ Two-line summary of each file — what it is and where it is used.
 ---
 
 ### `app.py`
-Main entry point and orchestrator. Runs the full pipeline or individual phases via CLI flags (`--skip-comments`, `--comments-only`, `--post-comments`, `--resume`, `--group`).
+Main entry point and orchestrator. Runs the full pipeline or individual phases via CLI flags (`--skip-comments`, `--comments-only`, `--send-telegram`, `--resume`, `--group`).
 
 ---
 
@@ -204,13 +201,8 @@ Reads the weekly schedule JSON and maps day numbers to groups and subreddits. Us
 
 ---
 
-### `reddit_poster.py`
-Thin wrapper for posting comments — calls the browser poster and normalizes success/error results. Used in Phase 4 by `app.py` via `post_comment_safe()`.
-
----
-
-### `reddit_browser_poster.py`
-Selenium-based Reddit automation: login, saved session, and posting comments on `www.reddit.com`. Used by `reddit_poster.py`; session stored in `.reddit_browser_session/`.
+### `telegram_notifier.py`
+Sends generated comments to Telegram group chats via the Bot API. Used in Phase 4 by `app.py`; maps pipeline group IDs to chat IDs from `TELEGRAM_CHAT_IDS` in `.env`.
 
 ---
 
@@ -220,7 +212,7 @@ Opens the MongoDB connection, optionally via SSH tunnel to the remote server. Us
 ---
 
 ### `db/repository.py`
-All MongoDB read/write operations: runs, raw posts, selected posts, comments, publish status. Used throughout `app.py` to persist and resume pipeline state.
+All MongoDB read/write operations: runs, raw posts, selected posts, comments, delivery status. Used throughout `app.py` to persist and resume pipeline state.
 
 ---
 
@@ -235,12 +227,12 @@ Weekly plan: which groups run on which day, subreddit URLs, names, and rules. Re
 ---
 
 ### `requirements.txt`
-Python package dependencies (Apify, OpenAI, MongoDB, Playwright, etc.). Install with `pip install -r requirements.txt`.
+Python package dependencies (Apify, OpenAI, MongoDB, etc.). Install with `pip install -r requirements.txt`.
 
 ---
 
 ### `.env`
-Secrets and config (API keys, MongoDB SSH, Reddit credentials, LLM provider). Loaded by `app.py` and several modules via `python-dotenv`. Not committed to git.
+Secrets and config (API keys, MongoDB SSH, Telegram bot, LLM provider). Loaded by `app.py` and several modules via `python-dotenv`. Not committed to git.
 
 ---
 
@@ -256,7 +248,7 @@ Project overview and quick-start documentation. General reference; this file (`P
 python3 app.py 1 3 --group A
 # → run_key printed, e.g. 20260608_122706
 
-# 2) Post to Reddit (after --reddit-login once)
-python3 app.py 1 --resume 20260608_122706 --group A --post-comments --dry-run
-python3 app.py 1 --resume 20260608_122706 --group A --post-comments
+# 2) Send to Telegram
+python3 app.py 1 --resume 20260608_122706 --group A --send-telegram --dry-run
+python3 app.py 1 --resume 20260608_122706 --group A --send-telegram
 ```

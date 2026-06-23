@@ -154,7 +154,7 @@ activemq-data/
 .env
 .envrc
 .reddit_browser_session/
-.telegram_handoff_state.json
+.telegram_bot_state.json
 .venv
 env/
 venv/

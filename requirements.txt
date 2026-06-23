@@ -3,4 +3,3 @@ python-dotenv>=1.0.0
 openai>=1.0.0
 google-genai>=1.0.0
 pymongo>=4.0.0
-selenium>=4.15.0
