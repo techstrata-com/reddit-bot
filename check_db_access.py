@@ -121,7 +121,7 @@ def main() -> int:
     load_dotenv(override=True)
 
     db_name = os.getenv("MONGODB_DB", "RedditBot")
-    ssh_enabled = truthy(os.getenv("MONGODB_SSH_ENABLED"), default=True)
+    ssh_enabled = truthy(os.getenv("MONGODB_SSH_ENABLED"), default=False)
 
     print("DB access check")
     print(f"SSH enabled: {ssh_enabled}")
@@ -137,9 +137,10 @@ def main() -> int:
             print(f"SSH key exists: {Path(os.getenv('MONGODB_SSH_KEY_PATH', '')).exists()}")
             tunnel_process, uri = start_ssh_tunnel(args.timeout)
         else:
-            uri = os.getenv("MONGODB_URI")
-            if not uri:
-                raise ValueError("MONGODB_URI is not set and MONGODB_SSH_ENABLED is false")
+            from db.connection import direct_mongo_uri
+
+            uri = direct_mongo_uri()
+            print(f"Direct URI: {uri}")
 
         check_mongo(uri, db_name, int(args.timeout * 1000))
         print("DB access: OK")

@@ -9,7 +9,7 @@ from apify_client import ApifyClient
 from dotenv import load_dotenv
 
 from comment_generator import generate_comment, get_llm_config, render_prompt
-from db.connection import close_connection, ssh_enabled
+from db.connection import close_connection
 from db.repository import PipelineRepository
 from schedule_loader import (
     DAY_NUMBERS,
@@ -362,9 +362,6 @@ def main() -> None:
     parser.add_argument("--resume", metavar="RUN_KEY", help="Resume an existing run (e.g. 20260608_122706)")
     parser.add_argument("--group", action="append", dest="groups", help="Process only specific group(s), e.g. --group A")
     args = parser.parse_args()
-
-    if not ssh_enabled() and not os.getenv("MONGODB_URI"):
-        raise ValueError("Set MONGODB_URI or enable MONGODB_SSH_ENABLED in .env")
 
     day_name, groups = get_groups_for_day(SCHEDULE_FILE, args.day)
     if not groups and not args.comments_only:

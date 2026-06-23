@@ -46,22 +46,31 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-`.env`:
+`.env` — use **different MongoDB settings depending on where you run the bot**:
+
+**On the server** (MongoDB runs locally there — no SSH, no keys):
 
 ```env
-# MongoDB via SSH tunnel (remote server)
+MONGODB_SSH_ENABLED=false
+MONGODB_URI=mongodb://127.0.0.1:27017
+MONGODB_DB=RedditBot
+```
+
+**On your Mac** (remote MongoDB via SSH tunnel):
+
+```env
 MONGODB_SSH_ENABLED=true
 MONGODB_SSH_HOST=mdstudio.oriele.ai
 MONGODB_SSH_USER=oriele
-MONGODB_SSH_KEY_PATH=/Users/borhan/Desktop/keys/id_ed25519
+MONGODB_SSH_KEY_PATH=/Users/you/.ssh/id_ed25519
 MONGODB_SSH_REMOTE_HOST=127.0.0.1
 MONGODB_SSH_REMOTE_PORT=27017
 MONGODB_DB=RedditBot
+```
 
-# Or direct connection (disable SSH):
-# MONGODB_SSH_ENABLED=false
-# MONGODB_URI=mongodb://localhost:27017
+See `.env.example` for both profiles.
 
+```env
 APIFY_API_TOKEN=...
 
 LLM_PROVIDER=openai

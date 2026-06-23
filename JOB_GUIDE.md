@@ -45,7 +45,24 @@ Post URL:
 - **Regenerate** — new LLM comment, message updated in Telegram
 - **Done** — marks comment as published on Reddit (team confirmed manual post)
 
-## Setup
+## Setup on the server
+
+When the bot runs on the **same machine as MongoDB** (`/home/oriele/reddit-bot`), disable SSH in `.env`:
+
+```env
+MONGODB_SSH_ENABLED=false
+MONGODB_URI=mongodb://127.0.0.1:27017
+MONGODB_DB=RedditBot
+```
+
+Then verify:
+
+```bash
+python check_db_access.py
+python -m job.daemon --tick
+```
+
+## Setup (one time)
 
 ### 1. Environment (`.env`)
 

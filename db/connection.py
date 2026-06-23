@@ -12,7 +12,17 @@ _tunnel_process: subprocess.Popen[str] | None = None
 
 
 def ssh_enabled() -> bool:
-    return os.getenv("MONGODB_SSH_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+    """SSH tunnel is for local dev only. On the MongoDB host, leave this false."""
+    return os.getenv("MONGODB_SSH_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
+
+
+def direct_mongo_uri() -> str:
+    uri = os.getenv("MONGODB_URI", "").strip()
+    if uri:
+        return uri
+    host = os.getenv("MONGODB_HOST", "127.0.0.1")
+    port = os.getenv("MONGODB_PORT", "27017")
+    return f"mongodb://{host}:{port}"
 
 
 def _free_port() -> int:
@@ -62,6 +72,13 @@ def _start_ssh_tunnel() -> int:
     ssh_key = os.getenv("MONGODB_SSH_KEY_PATH", os.path.expanduser("~/.ssh/id_ed25519"))
     remote_host = os.getenv("MONGODB_SSH_REMOTE_HOST", "127.0.0.1")
     remote_port = os.getenv("MONGODB_SSH_REMOTE_PORT", "27017")
+
+    if not os.path.isfile(ssh_key):
+        raise ValueError(
+            f"SSH key not found: {ssh_key}. "
+            "On the server where MongoDB runs locally, set MONGODB_SSH_ENABLED=false "
+            "and use MONGODB_URI=mongodb://127.0.0.1:27017 instead."
+        )
 
     local_port = int(os.getenv("MONGODB_SSH_LOCAL_PORT", "0")) or _free_port()
     remote_target = f"{remote_host}:{remote_port}"
@@ -115,9 +132,8 @@ def _mongo_uri() -> str:
             _local_port = _start_ssh_tunnel()
         return f"mongodb://127.0.0.1:{_local_port}"
 
-    uri = os.getenv("MONGODB_URI")
-    if not uri:
-        raise ValueError("MONGODB_URI is not set in .env")
+    uri = direct_mongo_uri()
+    print(f"Connecting to MongoDB directly ({uri})...", flush=True)
     return uri
 
 
