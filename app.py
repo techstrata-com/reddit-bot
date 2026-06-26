@@ -21,7 +21,13 @@ from schedule_loader import (
     subreddit_context_for_post,
 )
 from scraper import scrape_subreddit
-from telegram_notifier import chat_id_for_group, reddit_username, send_delay_secs, send_handoff
+from telegram_notifier import (
+    chat_id_for_group,
+    handoff_context_from_doc,
+    reddit_username,
+    send_delay_secs,
+    send_handoff,
+)
 from select_posts import select_top_posts
 
 load_dotenv(override=True)
@@ -110,6 +116,7 @@ def generate_comments(
             day_number=day_number,
             day_name=day_name,
             group_id=group.id,
+            group_title=group.title,
             reddit_post_id=reddit_post_id,
             subreddit_name=subreddit_name,
             post_url=post.get("url", ""),
@@ -174,7 +181,7 @@ def process_group_send_telegram(
     delay = send_delay_secs()
     sent = 0
     failed = 0
-    pending: list[tuple[int, str, str, str, str, str]] = []
+    pending: list[dict] = []
 
     for i, doc in enumerate(comments, start=1):
         post_url = doc.get("post_url")
@@ -197,10 +204,10 @@ def process_group_send_telegram(
         if dry_run:
             print(f"  [{i}/{len(comments)}] r/{doc.get('subreddit_name')} - {title}...")
             print(f"    (dry-run) would send to Telegram chat {chat_id}")
-            print(f"    comment ({len(text)} chars) + URL: {post_url}")
+            print(f"    day={doc.get('day_name')} group={doc.get('group_id')}")
             continue
 
-        pending.append((i, comment_id, post_url, text, doc.get("subreddit_name"), title))
+        pending.append(doc)
 
     if dry_run or not pending:
         print(f"  Phase 4 complete: {sent} sent, {failed} failed")
@@ -209,10 +216,23 @@ def process_group_send_telegram(
     repo.set_run_phase(pipeline_run_id, f"telegram_group_{group.id}")
     print(f"  sending {len(pending)} comment(s) to Telegram (chat {chat_id})...")
 
-    for idx, (i, comment_id, post_url, text, subreddit, title) in enumerate(pending):
+    for idx, doc in enumerate(pending):
+        i = idx + 1
+        comment_id = str(doc["_id"])
+        post_url = doc.get("post_url", "")
+        text = doc.get("generated_comment", "").strip()
+        subreddit = doc.get("subreddit_name")
+        title = (doc.get("post_title") or "")[:60]
+        meta = handoff_context_from_doc(doc)
+
         print(f"  [{i}/{len(comments)}] r/{subreddit} - {title}...")
         result = send_handoff(
-            chat_id, text, post_url, comment_id, reddit_user=reddit_username()
+            chat_id,
+            text,
+            post_url,
+            comment_id,
+            reddit_user=reddit_username(),
+            **meta,
         )
         if result["ok"]:
             repo.mark_comment_sent(

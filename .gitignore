@@ -152,6 +152,7 @@ activemq-data/
 
 # Environments
 .env
+.env.production
 .envrc
 .reddit_browser_session/
 .telegram_bot_state.json

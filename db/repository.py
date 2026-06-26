@@ -45,6 +45,7 @@ class PipelineRepository:
         self.comments.create_index([("pipeline_run_id", ASCENDING)])
         self.comments.create_index([("run_key", ASCENDING), ("group_id", ASCENDING)])
         self.comments.create_index([("publish_status", ASCENDING)])
+        self.comments.create_index([("telegram_scheduled_at", ASCENDING)])
 
         self.job_runs.create_index([("calendar_date", ASCENDING)], unique=True)
         self.job_runs.create_index([("workflow_run_key", ASCENDING)])
@@ -102,13 +103,29 @@ class PipelineRepository:
 
     def get_yesterday_telegram_slot(self, calendar_date: str) -> int | None:
         from datetime import date, timedelta
+        from zoneinfo import ZoneInfo
 
+        la = ZoneInfo("America/Los_Angeles")
         yesterday = (date.fromisoformat(calendar_date) - timedelta(days=1)).isoformat()
         doc = self.get_job_run(yesterday)
-        if not doc:
+        if not doc or not doc.get("workflow_run_key"):
             return None
-        if doc.get("telegram_status") not in {"sent", "partial"}:
-            return None
+
+        run_key = doc["workflow_run_key"]
+        comment = self.comments.find_one(
+            {
+                "run_key": run_key,
+                "publish_status": {"$in": ["sent", "published"]},
+                "telegram_scheduled_at": {"$ne": None},
+            },
+            sort=[("telegram_scheduled_at", DESCENDING)],
+        )
+        if comment and comment.get("telegram_scheduled_at"):
+            ts = comment["telegram_scheduled_at"]
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=la)
+            return ts.astimezone(la).hour
+
         return doc.get("telegram_slot_hour")
 
     def count_published_comments_for_run(self, run_key: str) -> int:
@@ -246,17 +263,68 @@ class PipelineRepository:
             },
         )
 
-    def mark_comment_published(self, comment_id: str) -> None:
+    def mark_comment_published(
+        self,
+        comment_id: str,
+        *,
+        published_by_telegram_id: int | str | None = None,
+        published_by_username: str | None = None,
+        published_by_name: str | None = None,
+    ) -> None:
         self.comments.update_one(
             {"_id": self._oid(comment_id)},
             {
                 "$set": {
                     "publish_status": "published",
                     "published_at": utcnow(),
+                    "published_on_reddit_at": utcnow(),
+                    "published_by_telegram_id": published_by_telegram_id,
+                    "published_by_username": published_by_username,
+                    "published_by_name": published_by_name,
                     "publish_error": None,
                 }
             },
         )
+
+    def get_pending_comments_for_run(self, run_key: str) -> list[dict]:
+        return list(
+            self.comments.find({
+                "run_key": run_key,
+                "publish_status": {"$nin": ["sent", "posted", "published", "failed"]},
+            }).sort([("group_id", ASCENDING), ("created_at", ASCENDING)])
+        )
+
+    def set_comment_telegram_schedule(self, comment_id: str, scheduled_at: datetime) -> None:
+        self.comments.update_one(
+            {"_id": self._oid(comment_id)},
+            {"$set": {"telegram_scheduled_at": scheduled_at}},
+        )
+
+    def get_due_telegram_comments(self, now: datetime) -> list[dict]:
+        return list(
+            self.comments.find({
+                "publish_status": {"$nin": ["sent", "posted", "published", "failed"]},
+                "telegram_scheduled_at": {"$lte": now},
+            }).sort("telegram_scheduled_at", ASCENDING)
+        )
+
+    def count_run_telegram_pending(self, run_key: str) -> int:
+        return self.comments.count_documents({
+            "run_key": run_key,
+            "publish_status": {"$nin": ["sent", "posted", "published", "failed"]},
+        })
+
+    def count_run_telegram_sent(self, run_key: str) -> int:
+        return self.comments.count_documents({
+            "run_key": run_key,
+            "publish_status": "sent",
+        })
+
+    def count_run_telegram_published(self, run_key: str) -> int:
+        return self.comments.count_documents({
+            "run_key": run_key,
+            "publish_status": "published",
+        })
 
     def update_generated_comment(
         self,
@@ -467,6 +535,7 @@ class PipelineRepository:
         day_number: int,
         day_name: str,
         group_id: str,
+        group_title: str,
         reddit_post_id: str,
         subreddit_name: str,
         post_url: str,
@@ -487,6 +556,7 @@ class PipelineRepository:
             "day_number": day_number,
             "day_name": day_name,
             "group_id": group_id,
+            "group_title": group_title,
             "reddit_post_id": reddit_post_id,
             "subreddit_name": subreddit_name,
             "post_url": post_url,

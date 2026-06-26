@@ -7,7 +7,7 @@ Automated daily pipeline + scheduled Telegram handoff for human Reddit posting.
 | Time (Los Angeles) | Action |
 |---|---|
 | **00:01** | Run `python app.py {day} 3` for today's Mara schedule day |
-| **8:00 AM – 4:00 PM** (hourly slots) | Send generated comments to Telegram at one picked slot |
+| **Right after workflow** | Send **all** generated comments to Telegram at once |
 | **24/7** | Listen for **Regenerate** / **Done** button presses |
 
 ### Day mapping (automatic)
@@ -22,14 +22,15 @@ Automated daily pipeline + scheduled Telegram handoff for human Reddit posting.
 | Thursday | 6 | `python app.py 6 3` |
 | Friday | 7 | `python app.py 7 3` |
 
-### Telegram slot rules
+### Telegram delivery
 
-- One **hourly slot** is picked per day between **8:00 AM and 4:00 PM** LA time.
-- If yesterday had a successful Telegram send, **today's slot will not repeat yesterday's hour**.
-- All comments for that day's run are sent when the slot arrives (spaced by `TELEGRAM_SEND_DELAY_SECS`).
+- When the daily workflow finishes (scrape + select + generate), **all comments for that day are sent to Telegram immediately**.
+- The team posts on Reddit **whenever they want** — no scheduled posting time.
+- Messages are spaced by `TELEGRAM_SEND_DELAY_SECS` (default 1 second) to avoid Telegram rate limits.
 
 ### Telegram message format
 
+**Before Done:**
 ```
 Reddit account: u/your_username
 
@@ -42,8 +43,18 @@ Post URL:
 [Regenerate] [Done]
 ```
 
-- **Regenerate** — new LLM comment, message updated in Telegram
-- **Done** — marks comment as published on Reddit (team confirmed manual post)
+**After Done** (same message edited — buttons removed):
+```
+Reddit account: u/your_username
+Comment: ...
+Post URL: ...
+
+Status: ✅ Published
+Posted by: @username
+```
+
+- **Regenerate** — new LLM comment, same message updated
+- **Done** — saves who clicked in MongoDB, edits message to **Published**, removes buttons
 
 ## Setup on the server
 
@@ -148,7 +159,7 @@ Fields include `workflow_status`, `workflow_run_key`, `telegram_slot_hour`, `tel
 | Manual | Automated job |
 |---|---|
 | `python app.py 5 3` | Same at 00:01 LA on Wednesday |
-| `python app.py 5 3 --send-telegram` | Telegram at scheduled slot (not immediately) |
+| `python app.py 5 3 --send-telegram` | Telegram immediately after manual run |
 | `python telegram_bot.py` | Built into daemon (background thread) |
 
 The manual CLI still works for ad-hoc runs and debugging.

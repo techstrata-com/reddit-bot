@@ -1,10 +1,11 @@
 """
-Daily job daemon: workflow at 00:01 LA, Telegram handoff in scheduled hourly slot.
+Daily job daemon: workflow at 00:01 LA, then send all comments to Telegram at once.
 
 Also runs the Telegram button listener in a background thread.
 """
 
 import argparse
+import os
 import sys
 import threading
 import time
@@ -15,146 +16,36 @@ from dotenv import load_dotenv
 from db.connection import close_connection
 from db.repository import PipelineRepository, utcnow
 from job.logging import DailyJobLogger
-from job.schedule import (
-    is_telegram_due,
-    la_calendar_date_str,
-    la_now,
-    mara_day_for_date,
-    la_today,
-    pick_telegram_slot_hour,
-    should_run_workflow_today,
-    slot_to_datetime,
-)
+from job.schedule import la_calendar_date_str, la_now, la_today, mara_day_for_date, should_run_workflow_today
 from pipeline_runner import run_workflow, send_telegram_for_run
 from schedule_loader import DAY_NUMBERS
 from telegram_bot import run_bot
 
 load_dotenv(override=True)
 
-TOP_N = int(__import__("os").getenv("JOB_TOP_N", "3"))
-POLL_SECS = float(__import__("os").getenv("JOB_POLL_SECS", "30"))
+TOP_N = int(os.getenv("JOB_TOP_N", "3"))
+POLL_SECS = float(os.getenv("JOB_POLL_SECS", "30"))
 
 
 def _logger_for_today() -> DailyJobLogger:
     return DailyJobLogger(la_calendar_date_str())
 
 
-def _run_workflow_job(log: DailyJobLogger, repo: PipelineRepository, calendar_date: str) -> None:
-    day_number = mara_day_for_date(la_today())
-    day_name = DAY_NUMBERS[day_number]
-    job = repo.ensure_job_run(calendar_date, day_number, day_name)
-
-    if job.get("workflow_status") in {"completed", "skipped"}:
-        log.info(f"Workflow already {job['workflow_status']} for {calendar_date} — skipping")
-        return
-
-    log.section(f"DAILY WORKFLOW START — {day_name} (day {day_number})")
-    log.info(f"Calendar date (LA): {calendar_date}")
-    log.info(f"Command equivalent: python app.py {day_number} {TOP_N}")
-
-    repo.update_job_run(
-        calendar_date,
-        workflow_status="running",
-        workflow_started_at=utcnow(),
-    )
-
-    result = run_workflow(day_number, TOP_N)
-
-    if result.skipped:
-        log.info(f"Workflow skipped: {result.skip_reason}")
-        repo.update_job_run(
-            calendar_date,
-            workflow_status="skipped",
-            workflow_finished_at=utcnow(),
-            workflow_duration_secs=round(result.duration_secs, 2),
-            workflow_error=None,
-            telegram_status="skipped",
-        )
-        log.info(f"Duration: {result.duration_secs:.1f}s")
-        return
-
-    if not result.success:
-        log.error(f"Workflow failed after {result.duration_secs:.1f}s", exc=Exception(result.error or "unknown"))
-        repo.update_job_run(
-            calendar_date,
-            workflow_status="failed",
-            workflow_finished_at=utcnow(),
-            workflow_duration_secs=round(result.duration_secs, 2),
-            workflow_error=result.error,
-            telegram_status="failed",
-            telegram_error="Workflow failed — no comments to send",
-        )
-        return
-
-    yesterday_slot = repo.get_yesterday_telegram_slot(calendar_date)
-    slot_hour = pick_telegram_slot_hour(yesterday_slot)
-    scheduled_at = slot_to_datetime(calendar_date, slot_hour)
-
-    log.info(f"Workflow completed in {result.duration_secs:.1f}s")
-    log.info(f"Run key: {result.run_key}")
-    log.info(f"Groups: {result.group_ids}")
-
-    if yesterday_slot is not None:
-        log.info(f"Yesterday's Telegram slot was {yesterday_slot}:00 LA — excluded from today's pick")
-    log.info(f"Telegram handoff scheduled for {scheduled_at.strftime('%Y-%m-%d %H:%M %Z')} (slot {slot_hour}:00)")
-
-    repo.update_job_run(
-        calendar_date,
-        workflow_status="completed",
-        workflow_run_key=result.run_key,
-        workflow_finished_at=utcnow(),
-        workflow_duration_secs=round(result.duration_secs, 2),
-        workflow_groups=result.group_ids,
-        workflow_error=None,
-        telegram_slot_hour=slot_hour,
-        telegram_scheduled_at=scheduled_at,
-        telegram_status="scheduled",
-    )
-    log.section("DAILY WORKFLOW COMPLETE")
-
-
-def _run_telegram_job(
+def _send_telegram_for_job(
     log: DailyJobLogger,
     repo: PipelineRepository,
     calendar_date: str,
-    *,
-    force: bool = False,
+    run_key: str,
+    group_ids: list[str],
 ) -> None:
-    job = repo.get_job_run(calendar_date)
-    if not job:
-        return
-
-    if job.get("telegram_status") in {"sent", "skipped", "failed"}:
-        return
-
-    if job.get("workflow_status") not in {"completed"}:
-        return
-
-    scheduled_at = job.get("telegram_scheduled_at")
-    if not scheduled_at:
-        return
-
-    if scheduled_at.tzinfo is None:
-        from zoneinfo import ZoneInfo
-
-        scheduled_at = scheduled_at.replace(tzinfo=ZoneInfo("America/Los_Angeles"))
-
-    if not force and not is_telegram_due(scheduled_at):
-        return
-
-    run_key = job.get("workflow_run_key")
-    if not run_key:
-        log.error("Telegram due but workflow_run_key is missing")
-        repo.update_job_run(
-            calendar_date,
-            telegram_status="failed",
-            telegram_error="Missing workflow_run_key",
-        )
+    pending = repo.count_run_telegram_pending(run_key)
+    if pending == 0:
+        log.info("No pending comments to send to Telegram")
         return
 
     log.section("TELEGRAM HANDOFF START")
-    log.info(f"Scheduled time: {scheduled_at.strftime('%Y-%m-%d %H:%M %Z')}")
     log.info(f"Run key: {run_key}")
+    log.info(f"Sending {pending} comment(s) to Telegram (all at once)...")
 
     repo.update_job_run(
         calendar_date,
@@ -162,7 +53,7 @@ def _run_telegram_job(
         telegram_started_at=utcnow(),
     )
 
-    result = send_telegram_for_run(run_key, job.get("workflow_groups"))
+    result = send_telegram_for_run(run_key, group_ids)
 
     if result.error:
         log.error(f"Telegram send failed after {result.duration_secs:.1f}s", exc=Exception(result.error))
@@ -180,7 +71,7 @@ def _run_telegram_job(
     status = "sent" if result.failed == 0 else "partial"
     log.info(f"Telegram handoff {status}: {result.sent} sent, {result.failed} failed")
     log.info(f"Duration: {result.duration_secs:.1f}s")
-    log.info("Users can copy comments and tap Done when published on Reddit")
+    log.info("Team can post on Reddit whenever ready — tap Done when published")
 
     repo.update_job_run(
         calendar_date,
@@ -194,7 +85,100 @@ def _run_telegram_job(
     log.section("TELEGRAM HANDOFF COMPLETE")
 
 
-def tick(log: DailyJobLogger | None = None) -> None:
+def _run_workflow_job(log: DailyJobLogger, repo: PipelineRepository, calendar_date: str) -> None:
+    day_number = mara_day_for_date(la_today())
+    day_name = DAY_NUMBERS[day_number]
+    job = repo.ensure_job_run(calendar_date, day_number, day_name)
+
+    if job.get("workflow_status") in {"completed", "skipped"}:
+        log.info(f"Workflow already {job['workflow_status']} for {calendar_date} — skipping")
+        return
+
+    log.section(f"DAILY WORKFLOW START — {day_name} (day {day_number})")
+    log.info(f"Calendar date (LA): {calendar_date}")
+    log.info(f"Command equivalent: python app.py {day_number} {TOP_N}")
+
+    repo.update_job_run(calendar_date, workflow_status="running", workflow_started_at=utcnow())
+
+    result = run_workflow(day_number, TOP_N)
+
+    if result.skipped:
+        log.info(f"Workflow skipped: {result.skip_reason}")
+        repo.update_job_run(
+            calendar_date,
+            workflow_status="skipped",
+            workflow_finished_at=utcnow(),
+            workflow_duration_secs=round(result.duration_secs, 2),
+            telegram_status="skipped",
+        )
+        return
+
+    if not result.success:
+        log.error(f"Workflow failed after {result.duration_secs:.1f}s", exc=Exception(result.error or "unknown"))
+        repo.update_job_run(
+            calendar_date,
+            workflow_status="failed",
+            workflow_finished_at=utcnow(),
+            workflow_duration_secs=round(result.duration_secs, 2),
+            workflow_error=result.error,
+            telegram_status="failed",
+            telegram_error="Workflow failed — no comments to send",
+        )
+        return
+
+    log.info(f"Workflow completed in {result.duration_secs:.1f}s")
+    log.info(f"Run key: {result.run_key}")
+    log.info(f"Groups: {result.group_ids}")
+
+    repo.update_job_run(
+        calendar_date,
+        workflow_status="completed",
+        workflow_run_key=result.run_key,
+        workflow_finished_at=utcnow(),
+        workflow_duration_secs=round(result.duration_secs, 2),
+        workflow_groups=result.group_ids,
+        workflow_error=None,
+        telegram_status="pending",
+    )
+    log.section("DAILY WORKFLOW COMPLETE")
+
+    _send_telegram_for_job(log, repo, calendar_date, result.run_key, result.group_ids)
+
+
+def _sync_published_count(log: DailyJobLogger, repo: PipelineRepository, calendar_date: str) -> None:
+    job = repo.get_job_run(calendar_date)
+    if not job or not job.get("workflow_run_key"):
+        return
+
+    run_key = job["workflow_run_key"]
+    published = repo.count_run_telegram_published(run_key)
+    if published != job.get("telegram_comments_published", 0):
+        log.info(f"Published on Reddit: {published} comment(s) (run {run_key})")
+        repo.update_job_run(calendar_date, telegram_comments_published=published)
+
+
+def _retry_pending_telegram(log: DailyJobLogger, repo: PipelineRepository, calendar_date: str) -> None:
+    """Catch-up if workflow finished but Telegram send did not complete."""
+    job = repo.get_job_run(calendar_date)
+    if not job or job.get("workflow_status") != "completed":
+        return
+
+    run_key = job.get("workflow_run_key")
+    if not run_key:
+        return
+
+    if job.get("telegram_status") in {"sent", "running"}:
+        return
+
+    pending = repo.count_run_telegram_pending(run_key)
+    if pending == 0:
+        return
+
+    log.warning(f"Retrying Telegram send — {pending} comment(s) still pending")
+    _send_telegram_for_job(log, repo, calendar_date, run_key, job.get("workflow_groups") or [])
+
+
+def tick(log: DailyJobLogger | None = None, *, close_db: bool = True) -> None:
     log = log or _logger_for_today()
     calendar_date = la_calendar_date_str()
     now = la_now()
@@ -207,33 +191,23 @@ def tick(log: DailyJobLogger | None = None) -> None:
             day_name = DAY_NUMBERS[day_number]
             job = repo.ensure_job_run(calendar_date, day_number, day_name)
 
-        workflow_status = job.get("workflow_status", "pending")
-        if workflow_status == "pending" and should_run_workflow_today(now):
+        if job.get("workflow_status", "pending") == "pending" and should_run_workflow_today(now):
             _run_workflow_job(log, repo, calendar_date)
-            job = repo.get_job_run(calendar_date)
+        else:
+            _retry_pending_telegram(log, repo, calendar_date)
 
-        if job and job.get("telegram_status") == "sent":
-            run_key = job.get("workflow_run_key")
-            if run_key:
-                published = repo.count_published_comments_for_run(run_key)
-                if published != job.get("telegram_comments_published", 0):
-                    log.info(f"Published on Reddit so far: {published} comment(s)")
-                    repo.update_job_run(
-                        calendar_date,
-                        telegram_comments_published=published,
-                    )
-
-        _run_telegram_job(log, repo, calendar_date)
+        _sync_published_count(log, repo, calendar_date)
     finally:
-        close_connection()
+        if close_db:
+            close_connection()
 
 
 def run_daemon() -> None:
     log = _logger_for_today()
     log.section("JOB DAEMON STARTED")
     log.info(f"LA time: {la_now().strftime('%Y-%m-%d %H:%M:%S %Z')}")
-    log.info(f"Workflow trigger: 00:01 LA (daily)")
-    log.info(f"Telegram window: hourly slots (see JOB_TELEGRAM_SLOT_* env vars)")
+    log.info("Workflow trigger: 00:01 LA (daily)")
+    log.info("Telegram: all comments sent together when workflow finishes")
     log.info(f"Log file: {log.path}")
     log.info(f"Poll interval: {POLL_SECS}s")
 
@@ -249,7 +223,7 @@ def run_daemon() -> None:
             tick_key = (now.year, now.month, now.day, now.hour, now.minute)
             if tick_key != last_tick_key:
                 last_tick_key = tick_key
-                tick(_logger_for_today())
+                tick(_logger_for_today(), close_db=False)
             time.sleep(POLL_SECS)
     except KeyboardInterrupt:
         log.info("Daemon stopped by user")
@@ -261,20 +235,12 @@ def run_daemon() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Reddit bot daily job daemon")
-    parser.add_argument(
-        "--tick",
-        action="store_true",
-        help="Run one scheduler tick now (workflow if 00:01, telegram if due)",
-    )
-    parser.add_argument(
-        "--force-workflow",
-        action="store_true",
-        help="Run today's workflow immediately (ignore schedule/idempotency guard in tick only)",
-    )
+    parser.add_argument("--tick", action="store_true", help="Run one scheduler tick now")
+    parser.add_argument("--force-workflow", action="store_true", help="Run today's workflow now")
     parser.add_argument(
         "--force-telegram",
         action="store_true",
-        help="Send today's Telegram handoff immediately",
+        help="Send all pending Telegram messages for today's run now",
     )
     args = parser.parse_args()
 
@@ -285,7 +251,7 @@ def main() -> None:
         day_number = mara_day_for_date(la_today())
         day_name = DAY_NUMBERS[day_number]
         repo.ensure_job_run(calendar_date, day_number, day_name)
-        repo.update_job_run(calendar_date, workflow_status="pending")
+        repo.update_job_run(calendar_date, workflow_status="pending", telegram_status="pending")
         try:
             _run_workflow_job(log, repo, calendar_date)
         finally:
@@ -300,9 +266,15 @@ def main() -> None:
         if not job or not job.get("workflow_run_key"):
             print("No completed workflow for today.", file=sys.stderr)
             sys.exit(1)
-        repo.update_job_run(calendar_date, telegram_status="scheduled")
         try:
-            _run_telegram_job(log, repo, calendar_date, force=True)
+            repo.update_job_run(calendar_date, telegram_status="pending")
+            _send_telegram_for_job(
+                log,
+                repo,
+                calendar_date,
+                job["workflow_run_key"],
+                job.get("workflow_groups") or [],
+            )
         finally:
             close_connection()
         return
