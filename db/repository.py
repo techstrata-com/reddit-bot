@@ -18,6 +18,7 @@ class PipelineRepository:
         self.raw_posts = self.db.raw_posts
         self.selected_posts = self.db.selected_posts
         self.comments = self.db.comments
+        self.telegram_chats = self.db.telegram_chats
         self.job_runs = self.db.job_runs
         self._ensure_indexes()
 
@@ -49,6 +50,47 @@ class PipelineRepository:
 
         self.job_runs.create_index([("calendar_date", ASCENDING)], unique=True)
         self.job_runs.create_index([("workflow_run_key", ASCENDING)])
+
+        self.telegram_chats.create_index([("chat_id", ASCENDING)], unique=True)
+        self.telegram_chats.create_index([("active", ASCENDING)])
+
+    def register_telegram_chat(self, chat_id: str, title: str, chat_type: str) -> None:
+        self.telegram_chats.update_one(
+            {"chat_id": str(chat_id)},
+            {
+                "$set": {
+                    "chat_id": str(chat_id),
+                    "title": title,
+                    "chat_type": chat_type,
+                    "active": True,
+                    "last_seen_at": utcnow(),
+                },
+                "$setOnInsert": {"registered_at": utcnow()},
+            },
+            upsert=True,
+        )
+
+    def deactivate_telegram_chat(self, chat_id: str) -> None:
+        self.telegram_chats.update_one(
+            {"chat_id": str(chat_id)},
+            {"$set": {"active": False, "last_seen_at": utcnow()}},
+        )
+
+    def migrate_telegram_chat(
+        self,
+        old_chat_id: str,
+        new_chat_id: str,
+        *,
+        title: str,
+        chat_type: str,
+    ) -> None:
+        self.deactivate_telegram_chat(old_chat_id)
+        self.register_telegram_chat(new_chat_id, title, chat_type)
+
+    def get_active_telegram_chats(self) -> list[dict]:
+        return list(
+            self.telegram_chats.find({"active": True}).sort("title", ASCENDING)
+        )
 
     def get_job_run(self, calendar_date: str) -> dict | None:
         return self.job_runs.find_one({"calendar_date": calendar_date})
@@ -229,6 +271,24 @@ class PipelineRepository:
             }).sort("created_at", ASCENDING)
         )
 
+    def get_unsent_telegram_comments(
+        self,
+        *,
+        run_key: str | None = None,
+        day_number: int | None = None,
+        group_id: str | None = None,
+    ) -> list[dict]:
+        query: dict = {
+            "publish_status": {"$nin": ["sent", "posted", "published"]},
+        }
+        if run_key:
+            query["run_key"] = run_key
+        if day_number is not None:
+            query["day_number"] = day_number
+        if group_id:
+            query["group_id"] = group_id
+        return list(self.comments.find(query).sort("created_at", ASCENDING))
+
     def get_comment_by_id(self, comment_id: str) -> dict | None:
         return self.comments.find_one({"_id": self._oid(comment_id)})
 
@@ -236,15 +296,16 @@ class PipelineRepository:
         self,
         comment_id: str,
         *,
-        telegram_message_id: int | str,
-        telegram_chat_id: str,
+        deliveries: list[dict],
         reddit_username: str | None = None,
     ) -> None:
+        first = deliveries[0] if deliveries else {}
         fields = {
             "publish_status": "sent",
             "published_at": utcnow(),
-            "telegram_message_id": telegram_message_id,
-            "telegram_chat_id": telegram_chat_id,
+            "telegram_deliveries": deliveries,
+            "telegram_message_id": first.get("message_id"),
+            "telegram_chat_id": first.get("chat_id"),
             "publish_error": None,
         }
         if reddit_username:

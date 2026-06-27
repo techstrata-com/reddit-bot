@@ -18,26 +18,66 @@ def bot_token() -> str:
     return token
 
 
-def telegram_chat_id() -> str:
+def telegram_chat_id() -> str | None:
+    """Optional override — if set, only this chat receives messages."""
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
     if chat_id:
         return chat_id
-
     legacy = os.getenv("TELEGRAM_CHAT_IDS", "").strip()
-    if not legacy:
-        raise ValueError("TELEGRAM_CHAT_ID is not set in .env")
+    if legacy and not legacy.startswith("{"):
+        return legacy
+    return None
 
-    if legacy.startswith("{"):
-        raise ValueError(
-            "TELEGRAM_CHAT_ID is not set. Use a single chat ID for your Telegram group, "
-            "e.g. TELEGRAM_CHAT_ID=-5391717887"
+
+def send_handoff_to_chats(
+    chat_ids: list[str],
+    comment: str,
+    post_url: str,
+    comment_id: str,
+    *,
+    reddit_user: str | None = None,
+    day_name: str | None = None,
+    day_number: int | None = None,
+    group_id: str | None = None,
+    group_title: str | None = None,
+    on_chat_migrate=None,
+) -> dict:
+    """Send handoff message to every registered group chat."""
+    if not chat_ids:
+        return {"ok": False, "error": "No Telegram groups found. Add the bot to a group first."}
+
+    deliveries: list[dict] = []
+    errors: list[str] = []
+    id_map: dict[str, str] = {}
+
+    for chat_id in chat_ids:
+        effective_id = id_map.get(chat_id, chat_id)
+        result = send_handoff(
+            effective_id,
+            comment,
+            post_url,
+            comment_id,
+            reddit_user=reddit_user,
+            day_name=day_name,
+            day_number=day_number,
+            group_id=group_id,
+            group_title=group_title,
+            on_chat_migrate=on_chat_migrate,
         )
+        if result.get("migrated_from"):
+            id_map[result["migrated_from"]] = result["telegram_chat_id"]
+        if result.get("ok"):
+            deliveries.append({
+                "chat_id": result["telegram_chat_id"],
+                "message_id": result["telegram_message_id"],
+            })
+        else:
+            errors.append(f"{chat_id}: {result.get('error', 'unknown')}")
 
-    return legacy
+    if deliveries:
+        return {"ok": True, "deliveries": deliveries, "errors": errors}
 
-
-def chat_id_for_group(group_id: str) -> str:
-    return telegram_chat_id()
+    return {"ok": False, "error": "; ".join(errors) or "All sends failed", "deliveries": []}
 
 
 def send_delay_secs() -> float:
@@ -144,6 +184,14 @@ def handoff_keyboard(comment_id: str, *, published: bool = False) -> dict | None
     }
 
 
+def _parse_telegram_error_body(detail: str) -> dict:
+    try:
+        body = json.loads(detail)
+    except json.JSONDecodeError:
+        return {}
+    return body if isinstance(body, dict) else {}
+
+
 def _telegram_api(method: str, payload: dict) -> dict:
     url = f"https://api.telegram.org/bot{bot_token()}/{method}"
     request = urllib.request.Request(
@@ -157,18 +205,39 @@ def _telegram_api(method: str, payload: dict) -> dict:
             body = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as err:
         detail = err.read().decode("utf-8", errors="replace")
-        return {"ok": False, "error": f"HTTP {err.code}: {detail}"}
+        parsed = _parse_telegram_error_body(detail)
+        out: dict = {
+            "ok": False,
+            "error": parsed.get("description") or f"HTTP {err.code}: {detail}",
+        }
+        if parsed.get("error_code") is not None:
+            out["error_code"] = parsed["error_code"]
+        migrate_to = (parsed.get("parameters") or {}).get("migrate_to_chat_id")
+        if migrate_to is not None:
+            out["migrate_to_chat_id"] = str(migrate_to)
+        return out
     except urllib.error.URLError as err:
         return {"ok": False, "error": str(err.reason)}
 
     if not body.get("ok"):
-        return {"ok": False, "error": body.get("description", "Telegram API error")}
+        out = {"ok": False, "error": body.get("description", "Telegram API error")}
+        if body.get("error_code") is not None:
+            out["error_code"] = body["error_code"]
+        migrate_to = (body.get("parameters") or {}).get("migrate_to_chat_id")
+        if migrate_to is not None:
+            out["migrate_to_chat_id"] = str(migrate_to)
+        return out
     return {"ok": True, "result": body.get("result")}
 
 
 def ensure_polling_mode() -> dict:
     """Remove webhook so getUpdates (button callbacks) works."""
     return _telegram_api("deleteWebhook", {"drop_pending_updates": False})
+
+
+def get_chat_info(chat_id: str) -> dict:
+    """Fetch chat details from Telegram (validates bot can access the chat)."""
+    return _telegram_api("getChat", {"chat_id": chat_id})
 
 
 def send_handoff(
@@ -182,6 +251,7 @@ def send_handoff(
     day_number: int | None = None,
     group_id: str | None = None,
     group_title: str | None = None,
+    on_chat_migrate=None,
 ) -> dict:
     payload = {
         "chat_id": chat_id,
@@ -202,15 +272,26 @@ def send_handoff(
         payload["reply_markup"] = keyboard
 
     result = _telegram_api("sendMessage", payload)
+    if not result["ok"] and result.get("migrate_to_chat_id"):
+        new_id = result["migrate_to_chat_id"]
+        if on_chat_migrate:
+            on_chat_migrate(chat_id, new_id)
+        payload["chat_id"] = new_id
+        result = _telegram_api("sendMessage", payload)
+
     if not result["ok"]:
         return result
 
     message = result["result"] or {}
-    return {
+    resolved_chat_id = str(message.get("chat", {}).get("id", payload["chat_id"]))
+    out = {
         "ok": True,
         "telegram_message_id": message.get("message_id"),
-        "telegram_chat_id": str(message.get("chat", {}).get("id", chat_id)),
+        "telegram_chat_id": resolved_chat_id,
     }
+    if resolved_chat_id != str(chat_id):
+        out["migrated_from"] = str(chat_id)
+    return out
 
 
 def edit_handoff(
@@ -266,8 +347,15 @@ def answer_callback(callback_query_id: str, text: str, *, alert: bool = False) -
     )
 
 
-def get_updates(offset: int | None = None, timeout: int = 30) -> dict:
-    payload: dict = {"timeout": timeout, "allowed_updates": ["callback_query"]}
+def get_updates(
+    offset: int | None = None,
+    timeout: int = 30,
+    *,
+    allowed_updates: list[str] | None = None,
+) -> dict:
+    if allowed_updates is None:
+        allowed_updates = ["my_chat_member", "message", "callback_query"]
+    payload: dict = {"timeout": timeout, "allowed_updates": allowed_updates}
     if offset is not None:
         payload["offset"] = offset
     return _telegram_api("getUpdates", payload)

@@ -69,8 +69,10 @@ MONGODB_DB=RedditBot
 Then verify:
 
 ```bash
-python check_db_access.py
-python -m job.daemon --tick
+# Force-send comments that were generated but never reached Telegram
+python resend_telegram.py --dry-run
+python resend_telegram.py --run-key 20260626_070107
+python resend_telegram.py --day 1
 ```
 
 ## Setup (one time)

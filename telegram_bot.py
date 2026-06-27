@@ -1,8 +1,6 @@
 """
 Telegram bot listener for Regenerate / Done inline buttons.
-
-Run standalone or as part of job daemon:
-  python3 telegram_bot.py
+Auto-registers any group the bot is added to — no TELEGRAM_CHAT_ID required.
 """
 
 import json
@@ -17,6 +15,7 @@ from dotenv import load_dotenv
 from comment_generator import generate_comment, get_llm_config
 from db.connection import close_connection
 from db.repository import PipelineRepository, utcnow
+from telegram_chats import bootstrap_from_updates, register_from_update
 from telegram_notifier import (
     answer_callback,
     edit_handoff,
@@ -24,7 +23,6 @@ from telegram_notifier import (
     get_updates,
     handoff_context_from_doc,
     reddit_username,
-    telegram_chat_id,
 )
 
 load_dotenv(override=True)
@@ -66,6 +64,16 @@ def _telegram_user_label(from_user: dict) -> str:
     return name or f"user {from_user.get('id', '?')}"
 
 
+def _message_context(callback: dict) -> tuple[str | None, int | None]:
+    message = callback.get("message") or {}
+    chat = message.get("chat") or {}
+    chat_id = chat.get("id")
+    message_id = message.get("message_id")
+    if chat_id is None or message_id is None:
+        return None, None
+    return str(chat_id), int(message_id)
+
+
 def _handle_regenerate(repo: PipelineRepository, comment_id: str, callback: dict) -> None:
     callback_id = callback.get("id")
     doc = repo.get_comment_by_id(comment_id)
@@ -82,6 +90,11 @@ def _handle_regenerate(repo: PipelineRepository, comment_id: str, callback: dict
         answer_callback(callback_id, "Missing prompt for regeneration.", alert=True)
         return
 
+    chat_id, message_id = _message_context(callback)
+    if not chat_id or not message_id:
+        answer_callback(callback_id, "Could not find message to update.", alert=True)
+        return
+
     answer_callback(callback_id, "Regenerating comment...")
     started = time.perf_counter()
     new_comment = generate_comment(prompt_text)
@@ -94,12 +107,6 @@ def _handle_regenerate(repo: PipelineRepository, comment_id: str, callback: dict
         llm_provider=llm_provider,
         llm_model=llm_model,
     )
-
-    chat_id = doc.get("telegram_chat_id") or telegram_chat_id()
-    message_id = doc.get("telegram_message_id")
-    if not message_id:
-        answer_callback(callback_id, "Saved in DB, but Telegram message ID is missing.", alert=True)
-        return
 
     meta = handoff_context_from_doc(doc)
     result = edit_handoff(
@@ -116,7 +123,7 @@ def _handle_regenerate(repo: PipelineRepository, comment_id: str, callback: dict
         answer_callback(callback_id, "Regenerated in DB, Telegram update failed.", alert=True)
         return
 
-    logger.info("Regenerated comment %s", comment_id)
+    logger.info("Regenerated comment %s in chat %s", comment_id, chat_id)
     answer_callback(callback_id, "New comment ready — copy and post on Reddit.")
 
 
@@ -134,6 +141,11 @@ def _handle_done(repo: PipelineRepository, comment_id: str, callback: dict) -> N
         answer_callback(callback_id, f"Already marked published by {who}.")
         return
 
+    chat_id, message_id = _message_context(callback)
+    if not chat_id or not message_id:
+        answer_callback(callback_id, "Could not find message to update.", alert=True)
+        return
+
     repo.mark_comment_published(
         comment_id,
         published_by_telegram_id=from_user.get("id"),
@@ -144,50 +156,39 @@ def _handle_done(repo: PipelineRepository, comment_id: str, callback: dict) -> N
     )
 
     doc = repo.get_comment_by_id(comment_id)
-    chat_id = doc.get("telegram_chat_id") or telegram_chat_id()
-    message_id = doc.get("telegram_message_id")
     published_at = doc.get("published_on_reddit_at") or utcnow()
-
     meta = handoff_context_from_doc(doc)
-    if message_id:
-        result = edit_handoff(
-            chat_id,
-            message_id,
-            doc.get("generated_comment", ""),
-            doc.get("post_url", ""),
-            comment_id,
-            published=True,
-            reddit_user=doc.get("reddit_username") or reddit_username(),
-            published_by_username=doc.get("published_by_username"),
-            published_by_name=doc.get("published_by_name"),
-            published_at=published_at,
-            **meta,
+
+    result = edit_handoff(
+        chat_id,
+        message_id,
+        doc.get("generated_comment", ""),
+        doc.get("post_url", ""),
+        comment_id,
+        published=True,
+        reddit_user=doc.get("reddit_username") or reddit_username(),
+        published_by_username=doc.get("published_by_username"),
+        published_by_name=doc.get("published_by_name"),
+        published_at=published_at,
+        **meta,
+    )
+    if not result["ok"]:
+        logger.error("Done edit failed for %s: %s", comment_id, result.get("error"))
+        answer_callback(
+            callback_id,
+            "Marked published in DB, but could not update Telegram message.",
+            alert=True,
         )
-        if not result["ok"]:
-            logger.error("Done edit failed for %s: %s", comment_id, result.get("error"))
-            answer_callback(
-                callback_id,
-                "Marked published in DB, but could not update Telegram message.",
-                alert=True,
-            )
-            return
+        return
 
     who = _telegram_user_label(from_user)
-    logger.info("Comment %s marked published by %s", comment_id, who)
+    logger.info("Comment %s marked published by %s in chat %s", comment_id, who, chat_id)
     answer_callback(callback_id, f"Published — recorded for {who}.")
 
 
 def handle_callback(callback: dict) -> None:
     callback_id = callback.get("id")
     data = callback.get("data", "")
-    message = callback.get("message") or {}
-    chat = message.get("chat") or {}
-    allowed_chat = str(telegram_chat_id())
-
-    if str(chat.get("id")) != allowed_chat:
-        if callback_id:
-            answer_callback(callback_id, "Unauthorized chat.", alert=True)
-        return
 
     parsed = _parse_callback(data)
     if not parsed or not callback_id:
@@ -196,6 +197,7 @@ def handle_callback(callback: dict) -> None:
     action, comment_id = parsed
     repo = PipelineRepository()
     try:
+        register_from_update(repo, {"callback_query": callback})
         if action == "regen":
             _handle_regenerate(repo, comment_id, callback)
         elif action == "done":
@@ -206,6 +208,13 @@ def handle_callback(callback: dict) -> None:
         answer_callback(callback_id, f"Error: {err}", alert=True)
     finally:
         close_connection()
+
+
+def process_update(repo: PipelineRepository, update: dict) -> None:
+    register_from_update(repo, update)
+    callback = update.get("callback_query")
+    if callback:
+        handle_callback(callback)
 
 
 def run_bot() -> None:
@@ -221,7 +230,19 @@ def run_bot() -> None:
     else:
         logger.info("Telegram polling mode active (webhook cleared)")
 
-    logger.info("Listening for button presses in chat %s", telegram_chat_id())
+    repo = PipelineRepository()
+    try:
+        count = bootstrap_from_updates(repo)
+        chats = repo.get_active_telegram_chats()
+        if chats:
+            names = ", ".join(f"{c['title']} ({c['chat_id']})" for c in chats)
+            logger.info("Registered Telegram groups: %s", names)
+        elif count:
+            logger.info("Bootstrapped %d group(s) from recent updates", count)
+        else:
+            logger.info("No groups yet — add the bot to a Telegram group to receive comments")
+    finally:
+        close_connection()
 
     offset = _load_offset()
 
@@ -237,9 +258,14 @@ def run_bot() -> None:
                 offset = int(update["update_id"]) + 1
                 _save_offset(offset)
 
-                callback = update.get("callback_query")
-                if callback:
-                    handle_callback(callback)
+                if update.get("callback_query"):
+                    handle_callback(update["callback_query"])
+                elif "my_chat_member" in update or "message" in update:
+                    repo = PipelineRepository()
+                    try:
+                        register_from_update(repo, update)
+                    finally:
+                        close_connection()
         except Exception as err:
             logger.error("Bot loop error: %s", err)
             traceback.print_exc()

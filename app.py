@@ -22,12 +22,12 @@ from schedule_loader import (
 )
 from scraper import scrape_subreddit
 from telegram_notifier import (
-    chat_id_for_group,
     handoff_context_from_doc,
     reddit_username,
     send_delay_secs,
-    send_handoff,
+    send_handoff_to_chats,
 )
+from telegram_chats import chat_ids, handle_chat_migration
 from select_posts import select_top_posts
 
 load_dotenv(override=True)
@@ -173,10 +173,14 @@ def process_group_send_telegram(
         print(f"  no pending comments for group {group.id}")
         return
 
-    try:
-        chat_id = chat_id_for_group(group.id)
-    except ValueError as err:
-        raise ValueError(f"Group {group.id}: {err}") from err
+    targets = chat_ids(repo)
+    if not targets:
+        raise ValueError(
+            "No Telegram groups found. Add the bot to a group and send any message, "
+            "or restart the daemon so it can detect the group."
+        )
+
+    print(f"  sending to {len(targets)} Telegram group(s): {targets}")
 
     delay = send_delay_secs()
     sent = 0
@@ -203,7 +207,7 @@ def process_group_send_telegram(
 
         if dry_run:
             print(f"  [{i}/{len(comments)}] r/{doc.get('subreddit_name')} - {title}...")
-            print(f"    (dry-run) would send to Telegram chat {chat_id}")
+            print(f"    (dry-run) would send to {len(targets)} Telegram group(s)")
             print(f"    day={doc.get('day_name')} group={doc.get('group_id')}")
             continue
 
@@ -214,7 +218,7 @@ def process_group_send_telegram(
         return
 
     repo.set_run_phase(pipeline_run_id, f"telegram_group_{group.id}")
-    print(f"  sending {len(pending)} comment(s) to Telegram (chat {chat_id})...")
+    print(f"  sending {len(pending)} comment(s) to Telegram...")
 
     for idx, doc in enumerate(pending):
         i = idx + 1
@@ -226,23 +230,23 @@ def process_group_send_telegram(
         meta = handoff_context_from_doc(doc)
 
         print(f"  [{i}/{len(comments)}] r/{subreddit} - {title}...")
-        result = send_handoff(
-            chat_id,
+        result = send_handoff_to_chats(
+            targets,
             text,
             post_url,
             comment_id,
             reddit_user=reddit_username(),
+            on_chat_migrate=lambda old, new: handle_chat_migration(repo, old, new),
             **meta,
         )
         if result["ok"]:
             repo.mark_comment_sent(
                 comment_id,
-                telegram_message_id=result["telegram_message_id"],
-                telegram_chat_id=result["telegram_chat_id"],
+                deliveries=result["deliveries"],
                 reddit_username=reddit_username(),
             )
             sent += 1
-            print(f"    OK sent (message_id={result['telegram_message_id']})")
+            print(f"    OK sent to {len(result['deliveries'])} group(s)")
         else:
             repo.mark_comment_failed(comment_id, result["error"])
             failed += 1
